@@ -1,0 +1,25 @@
+{
+  "name": "node-saltpack",
+  "version": "0.0.1",
+  "description": "An IcedCoffeeScript implementation of saltpack",
+  "homepage": "https://github.com/keybase/node-saltpack",
+  "main": "./lib/main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keybase/node-saltpack.git"
+  },
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "iced-runtime": "^1.0.3",
+    "keybase-nacl": "^1.0.4",
+    "purepack": "^1.0.4"
+  },
+  "author": "Maxwell Krohn",
+  "devDependencies": {
+    "iced-coffee-script": "^108.0.9",
+    "iced-test": "0.0.22",
+    "istanbul": "^0.4.0",
+    "keybase-nacl": "^1.0.4",
+    "purepack": "^1.0.4"
+  }
+}
