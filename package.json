@@ -12,14 +12,13 @@
   "dependencies": {
     "iced-runtime": "^1.0.3",
     "keybase-nacl": "^1.0.4",
+    "keybase-chunk-stream": "^0.1.2",
     "purepack": "^1.0.4"
   },
-  "author": "Maxwell Krohn",
+  "author": "Mark Cohen",
   "devDependencies": {
     "iced-coffee-script": "^108.0.9",
     "iced-test": "0.0.22",
-    "istanbul": "^0.4.0",
-    "keybase-nacl": "^1.0.4",
-    "purepack": "^1.0.4"
+    "istanbul": "^0.4.0"
   }
 }
