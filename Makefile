@@ -12,12 +12,11 @@ lib/%.js: src/%.iced
 
 $(BUILD_STAMP): \
 	lib/nonce.js \
-	lib/header.js \
-	lib/main.js
+	lib/header.js
 	date > $@
 
 clean:
-	rm -rf lib/*.js
+	find lib -type f -name *.js -exec rm {} \;
 	rm -rf $(BUILD_STAMP) $(TEST_STAMP) test/browser/test.js
 
 setup:
@@ -26,14 +25,14 @@ setup:
 coverage:
 	./node_modules/.bin/istanbul cover $(ICED) test/run.iced
 
-test: test-server
+test: test-server test-browser
 
 build: $(BUILD_STAMP)
 
 browser: $(BROWSER)
 
 $(BROWSER): lib/main.js $(BUILD_STAMP)
-	$(BROWSERIFY) -s libweb $< > $@
+	$(BROWSERIFY) -s nacl $< > $@
 
 test-server: $(BUILD_STAMP)
 	$(ICED) test/run.iced
