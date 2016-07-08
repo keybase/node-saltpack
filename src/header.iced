@@ -45,9 +45,7 @@ exports.generate_encryption_header_packet = (encryptor, recipients) ->
   for rec_pubkey in recipients
     mac_keys.push(compute_mac_key(encryptor, header_hash, rec_pubkey))
 
-  return {header_packet, mac_keys}
-
-
+  return {header_list, header_hash, header_packet, mac_keys}
 
 exports.parse_encryption_header_packet = (decryptor, header_packet) ->
   #unpack header

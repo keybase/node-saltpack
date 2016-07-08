@@ -25,7 +25,7 @@ setup:
 coverage:
 	./node_modules/.bin/istanbul cover $(ICED) test/run.iced
 
-test: test-server test-browser
+test: test-server
 
 build: $(BUILD_STAMP)
 
