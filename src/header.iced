@@ -77,8 +77,9 @@ exports.parse_encryption_header_packet = (decryptor, header_packet) ->
     try
       payload_key = decryptor.box_open_afternm({ciphertext : rec_pair[1], nonce : nonce.nonceForPayloadKeyBox(), secret})
     catch error
-      #if we're on the last recipient
-      if rec_pair is header_list[5][header_list[5].length] then throw new Error('You are not a recipient!')
+      continue
+
+  if payload_key.length is 0 then throw new Error('You are not a recipient!')
 
   #open the sender secretbox
   payload_decryptor = crypto.alloc({force_js : false})
