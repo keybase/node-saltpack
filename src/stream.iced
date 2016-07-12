@@ -5,6 +5,7 @@ header = require('./header.iced')
 nonce = require('./nonce.iced')
 
 saltpack_block_len = (1024**2)
+noop = () ->
 
 exports.EncryptStream = class EncryptStream extends stream.ChunkStream
   encrypt = (chunk) ->
@@ -34,7 +35,6 @@ exports.EncryptStream = class EncryptStream extends stream.ChunkStream
       super(chunk, encoding, cb)
 
   _flush : (cb) ->
-    noop = () ->
     super(noop)
     @push(encrypt(new Buffer('')))
     cb()
@@ -44,7 +44,7 @@ exports.EncryptStream = class EncryptStream extends stream.ChunkStream
 exports.DecryptStream = class DecryptStream extends stream.ChunkStream
   decrypt = (chunk) ->
     ciphertext = parse_payload_packet(chunk, @header_hash, @mac_key, 'foo', @block_num)
-    payload = @decryptor.secretbox_open({ciphertext, nonce.nonceForChunkSecretBox(@block_num)})
+    payload = @decryptor.secretbox_open({ciphertext, nonce : nonce.nonceForChunkSecretBox(@block_num)})
     ++@block_num
     return payload
 
@@ -58,9 +58,10 @@ exports.DecryptStream = class DecryptStream extends stream.ChunkStream
     @block_num = 0
     super(decrypt, saltpack_block_len, true)
 
-  _transform = (chunk, encoding, cb) ->
+  _transform : (chunk, encoding, cb) ->
     if not @header_read
-      {@header_hash, header_list, @decryptor.secretKey, @mac_key} = header.parse_encryption_header_packet(@decryptor, msgpack.encode(chunk))
+      {@header_hash, _, seckey, @mac_key} = header.parse_encryption_header_packet(@decryptor, msgpack.encode(chunk))
+      @decryptor.secretKey = seckey
       @header_read = true
       cb()
     else
