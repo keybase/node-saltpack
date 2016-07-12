@@ -17,7 +17,7 @@ step1 = (header_hash, block_num, payload_secretbox) ->
   crypto_hash.update(step1_cat)
   step1_hash = crypto_hash.digest()
 
-exports.generate_encryption_payload_packet = (header_hash, mac_keys, payload_secretbox, block_num) ->
+exports.generate_encryption_payload_packet = (payload_secretbox, block_num, header_hash, mac_keys) ->
   step1_hash = step1(header_hash, block_num, payload_secretbox)
 
   authenticators = []
@@ -26,18 +26,12 @@ exports.generate_encryption_payload_packet = (header_hash, mac_keys, payload_sec
     authenticators.push(authenticator)
 
   payload_list = [authenticators, payload_secretbox]
-  payload_packet = msgpack.pack(payload_list)
-  return {payload_list, payload_packet}
+  return payload_list
 
-exports.parse_payload_packet = (payload_packet, header_hash, mac_key, auth_index, block_num) ->
-  payload_list = msgpack.unpack(payload_packet)
+exports.parse_encryption_payload_packet = (payload_list, block_num, header_hash, mac_key, auth_index) ->
   step1_hash = step1(header_hash, block_num, payload_list[1])
-  expected_authenticator = compute_authenticator(step1_hash, mac_key)
 
-  found_authenticator = false
-  for auth in payload_list[0]
-    found_authenticator = util.bufeq_secure(expected_authenticator, auth)
-    if found_authenticator then break
-  unless found_authenticator then throw new Error('You are not an authenticator!')
+  computed_authenticator = compute_authenticator(step1_hash, mac_key)
+  unless util.bufeq_secure(computed_authenticator, payload_list[0][auth_index]) then throw new Error('You are not an authenticator!')
 
   return payload_list[1]

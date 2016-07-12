@@ -27,21 +27,22 @@ gen_header = () ->
 
 exports.test_header_pipeline = (T, cb) ->
   {packed_header, random_index, _, decryptor} = gen_header()
-  unpacked_header = header.parse_encryption_header_packet(decryptor, packed_header.header_packet)
+  {mac_key} = header.parse_encryption_header_packet(decryptor, packed_header.header_intermediate)
 
-  T.equal(packed_header.mac_keys[random_index], unpacked_header.mac_key, "MAC keys didn't match: packed key = #{packed_header.mac_keys[random_index]}, unpacked key = #{unpacked_header.mac_key}")
+  T.equal(packed_header.mac_keys[random_index], mac_key, "MAC keys didn't match: packed key = #{packed_header.mac_keys[random_index]}, unpacked key = #{mac_key}")
   cb()
 
 exports.test_packet_pipeline = (T, cb) ->
-  {packed_header, random_index, encryptor, decryptor} = gen_header()
+  {packed_header, _, encryptor, decryptor} = gen_header()
+  {header_list, header_hash, payload_key, sender_pubkey, mac_key, auth_index} = header.parse_encryption_header_packet(decryptor, packed_header.header_intermediate)
 
   block_num = 0
   plaintext = prng(prng(1)[0])
   payload_secretbox = encryptor.secretbox({plaintext, nonce : nonce.nonceForChunkSecretBox(block_num)})
 
-  {payload_list, payload_packet} = payload.generate_encryption_payload_packet(packed_header.header_hash, packed_header.mac_keys, payload_secretbox, block_num)
+  payload_list = payload.generate_encryption_payload_packet(payload_secretbox, block_num, header_hash, packed_header.mac_keys)
 
-  expected_payload_secretbox = payload.parse_payload_packet(payload_packet, packed_header.header_hash, packed_header.mac_keys[random_index], random_index, block_num)
+  expected_payload_secretbox = payload.parse_encryption_payload_packet(payload_list, block_num, header_hash, mac_key, auth_index)
   expected_plaintext = encryptor.secretbox_open({ciphertext : expected_payload_secretbox, nonce : nonce.nonceForChunkSecretBox(block_num)})
 
   T.equal(plaintext, expected_plaintext, "Plaintexts didn't match")

@@ -3,6 +3,7 @@
 msgpack = require('msgpack-lite')
 crypto = require('keybase-nacl')
 nonce = require('./nonce.iced')
+util = require('./util.iced')
 
 encryption_mode = 0
 attached_sign_mode = 1
@@ -46,18 +47,16 @@ exports.generate_encryption_header_packet = (encryptor, recipients) ->
   header_intermediate = msgpack.encode(header_list)
   crypto_hash.update(header_intermediate)
   header_hash = crypto_hash.digest()
-  header_packet = msgpack.encode(header_intermediate)
 
   mac_keys = []
   for rec_pubkey in recipients
     mac_keys.push(compute_mac_key(encryptor, header_hash, rec_pubkey))
 
-  return {header_list, header_hash, header_packet, mac_keys}
+  return {header_intermediate, header_hash, mac_keys}
 
-exports.parse_encryption_header_packet = (decryptor, header_packet) ->
+exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
   #unpack header
   crypto_hash = createHash('sha512')
-  header_intermediate = msgpack.decode(header_packet)
   crypto_hash.update(header_intermediate)
   header_hash = crypto_hash.digest()
   header_list = msgpack.decode(header_intermediate)
@@ -74,14 +73,15 @@ exports.parse_encryption_header_packet = (decryptor, header_packet) ->
   #find the payload key box
   found = false
   payload_key = new Buffer([])
-  for rec_pair in header_list[5]
-    if rec_pair[0] is decryptor.publicKey
-      payload_key = decryptor.box_open_afternm({ciphertext : rec_pair[1], nonce : nonce.nonceForPayloadKeyBox(), secret})
+  for auth_index in [0...recipients.length]
+    if util.bufeq_secure(recipients[auth_index][0], decryptor.publicKey)
+      payload_key = decryptor.box_open_afternm({ciphertext : recipients[auth_index][1], nonce : nonce.nonceForPayloadKeyBox(), secret})
       found = true
+      break
 
-  if not found then for rec_pair in header_list[5]
+  if not found then for auth_index in [0...recipients.length]
     try
-      payload_key = decryptor.box_open_afternm({ciphertext : rec_pair[1], nonce : nonce.nonceForPayloadKeyBox(), secret})
+      payload_key = decryptor.box_open_afternm({ciphertext : recipients[auth_index], nonce : nonce.nonceForPayloadKeyBox(), secret})
     catch error
       continue
 
@@ -95,4 +95,4 @@ exports.parse_encryption_header_packet = (decryptor, header_packet) ->
   #compute the MAC key
   mac_key = compute_mac_key(decryptor, header_hash, sender_pubkey)
 
-  return {header_hash, header_list, payload_key, mac_key}
+  return {header_list, header_hash, payload_key, sender_pubkey, mac_key, auth_index}
