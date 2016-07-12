@@ -13,14 +13,16 @@
     "iced-runtime": "^1.0.3",
     "keybase-nacl": "^1.0.7",
     "keybase-chunk-stream": "^0.1.2",
+    "node-armor-x": "^0.0.3",
     "purepack": "^1.0.4"
   },
   "author": "Mark Cohen",
   "devDependencies": {
+    "browserify": "^10.2.0",
     "iced-coffee-script": "^108.0.9",
     "iced-test": "0.0.22",
     "icsify": "^0.7.0",
-    "browserify": "^10.2.0",
-    "istanbul": "^0.4.0"
+    "istanbul": "^0.4.0",
+    "msgpack-lite": "^0.1.20"
   }
 }

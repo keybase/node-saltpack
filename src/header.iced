@@ -1,23 +1,30 @@
 {prng} = require('crypto')
 {createHash} = require('crypto')
-msgpack = require('purepack')
+msgpack = require('msgpack-lite')
 crypto = require('keybase-nacl')
 nonce = require('./nonce.iced')
 
+encryption_mode = 0
+attached_sign_mode = 1
+detached_sign_mode = 2
+current_major = 1
+current_minor = 0
+crypto_onetimeauth_BYTES = 32
+crypto_secretkey_BYTES = 32
+
 compute_mac_key = (encryptor, header_hash, pubkey) ->
-  zero_bytes = Buffer.alloc(32)
+  zero_bytes = Buffer.alloc(crypto_onetimeauth_BYTES)
   mac_box = encryptor.encrypt({plaintext : zero_bytes, nonce : nonce.nonceForMACKeyBox(header_hash), pubkey})
-  return mac_box.slice(-32)
+  return mac_box.slice(-crypto_onetimeauth_BYTES)
 
 exports.generate_encryption_header_packet = (encryptor, recipients) ->
-  mode = 0
   header_list = []
   header_list.push('saltpack')
-  header_list.push([1, 0])
-  header_list.push(mode)
+  header_list.push([current_major, current_minor])
+  header_list.push(encryption_mode)
 
   payload_encryptor = crypto.alloc({force_js : true})
-  payload_key = prng(32)
+  payload_key = prng(crypto_secretkey_BYTES)
   payload_encryptor.secretKey = payload_key
   ephemeral_encryptor = crypto.alloc({force_js : true})
   ephemeral_encryptor.genBoxPair()
@@ -36,10 +43,10 @@ exports.generate_encryption_header_packet = (encryptor, recipients) ->
   header_list.push(recipients_list)
 
   crypto_hash = createHash('sha512')
-  header_intermediate = msgpack.pack(header_list)
+  header_intermediate = msgpack.encode(header_list)
   crypto_hash.update(header_intermediate)
   header_hash = crypto_hash.digest()
-  header_packet = msgpack.pack(header_intermediate)
+  header_packet = msgpack.encode(header_intermediate)
 
   mac_keys = []
   for rec_pubkey in recipients
@@ -50,18 +57,19 @@ exports.generate_encryption_header_packet = (encryptor, recipients) ->
 exports.parse_encryption_header_packet = (decryptor, header_packet) ->
   #unpack header
   crypto_hash = createHash('sha512')
-  header_intermediate = msgpack.unpack(header_packet)
+  header_intermediate = msgpack.decode(header_packet)
   crypto_hash.update(header_intermediate)
   header_hash = crypto_hash.digest()
-  header_list = msgpack.unpack(header_intermediate)
+  header_list = msgpack.decode(header_intermediate)
+  [format, [major, minor], mode, ephemeral, sender, recipients] = header_list
 
   #sanity checking
-  if header_list[0] isnt 'saltpack' then throw new Error("wrong format #{header_list[0]}")
-  if header_list[1][0] isnt 1 or header_list[1][1] isnt 0 then throw new Error("wrong version number #{header_list[1][0]}.#{header_list[1][1]}")
-  if header_list[2] isnt 0 then throw new Error("packet wasn't meant for decryption, found mode #{header_list[2]}")
+  if format isnt 'saltpack' then throw new Error("wrong format #{format}")
+  if major isnt current_major then throw new Error("wrong version number #{major}.#{minor}")
+  if mode isnt encryption_mode then throw new Error("packet wasn't meant for decryption, found mode #{mode}")
 
   #precompute ephemeral shared secret
-  secret = decryptor.box_beforenm({pubkey : header_list[3], seckey : decryptor.secretKey})
+  secret = decryptor.box_beforenm({pubkey : ephemeral, seckey : decryptor.secretKey})
 
   #find the payload key box
   found = false
@@ -87,4 +95,4 @@ exports.parse_encryption_header_packet = (decryptor, header_packet) ->
   #compute the MAC key
   mac_key = compute_mac_key(decryptor, header_hash, sender_pubkey)
 
-  return {header_packet, mac_key}
+  return {header_hash, header_list, payload_key, mac_key}

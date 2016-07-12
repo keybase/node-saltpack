@@ -39,7 +39,7 @@ exports.test_packet_pipeline = (T, cb) ->
   plaintext = prng(prng(1)[0])
   payload_secretbox = encryptor.secretbox({plaintext, nonce : nonce.nonceForChunkSecretBox(block_num)})
 
-  {payload_list, payload_packet} = payload.generate_payload_packet(packed_header.header_hash, packed_header.mac_keys, payload_secretbox, block_num)
+  {payload_list, payload_packet} = payload.generate_encryption_payload_packet(packed_header.header_hash, packed_header.mac_keys, payload_secretbox, block_num)
 
   expected_payload_secretbox = payload.parse_payload_packet(payload_packet, packed_header.header_hash, packed_header.mac_keys[random_index], random_index, block_num)
   expected_plaintext = encryptor.secretbox_open({ciphertext : expected_payload_secretbox, nonce : nonce.nonceForChunkSecretBox(block_num)})
