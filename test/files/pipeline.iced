@@ -11,15 +11,17 @@ gen_encryptors = () ->
   decryptor.genBoxPair()
   return {encryptor, decryptor}
 
-gen_header = () ->
-  {encryptor, decryptor} = gen_encryptors()
+gen_recipients = (pk) ->
   recipient_index = prng(1)[0]
   recipients_list = []
-
   for i in [0...(recipient_index + prng(1)[0])]
     recipients_list.push(prng(32))
+  recipients_list[recipient_index] = pk
+  return {recipients_list, recipient_index}
 
-  recipients_list[recipient_index] = decryptor.publicKey
+gen_header = () ->
+  {encryptor, decryptor} = gen_encryptors()
+  {recipients_list, recipient_index} = gen_recipients(decryptor.publicKey)
   packed_header = header.generate_encryption_header_packet(encryptor, recipients_list)
   return {packed_header, recipient_index, encryptor, decryptor}
 
