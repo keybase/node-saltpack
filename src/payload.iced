@@ -37,7 +37,7 @@ exports.parse_encryption_payload_packet = (payload_decryptor, payload_list, bloc
   # verify that we are an authenticator
   step1_hash = step1(header_hash, block_num, payload_list[1])
   computed_authenticator = compute_authenticator(step1_hash, mac_key)
-  unless util.bufeq_secure(computed_authenticator, payload_list[0][recipient_index]) then throw new Error('You are not an authenticator!')
+  unless util.bufeq_secure(computed_authenticator, payload_list[0][recipient_index]) then throw new Error('Integrity check failed!')
 
   # if we make it here, we are an authenticator, so decrypt
   payload = payload_decryptor.secretbox_open({ciphertext : payload_list[1], nonce : nonce.nonceForChunkSecretBox(block_num)})
