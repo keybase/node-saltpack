@@ -10,14 +10,14 @@ attached_sign_mode = 1
 detached_sign_mode = 2
 current_major = 1
 current_minor = 0
-crypto_auth_BYTES = 32
-crypto_secretkey_BYTES = 32
+crypto_auth_KEYBYTES = 32
+crypto_secretbox_KEYBYTES = 32
 
 compute_mac_key = (encryptor, header_hash, pubkey) ->
-  zero_bytes = Buffer.alloc(32)
+  zero_bytes = Buffer.alloc(crypto_auth_KEYBYTES)
   mac_box = encryptor.encrypt({plaintext : zero_bytes, nonce : nonce.nonceForMACKeyBox(header_hash), pubkey})
   # take last crypto_auth_BYTES bytes of MAC box
-  return mac_box.slice(-crypto_auth_BYTES)
+  return mac_box.slice(-crypto_auth_KEYBYTES)
 
 exports.generate_encryption_header_packet = (encryptor, recipients) ->
   header_list = []
@@ -26,7 +26,7 @@ exports.generate_encryption_header_packet = (encryptor, recipients) ->
   header_list.push(encryption_mode)
 
   payload_encryptor = crypto.alloc({force_js : true})
-  payload_key = prng(crypto_secretkey_BYTES)
+  payload_key = prng(crypto_secretbox_KEYBYTES)
   payload_encryptor.secretKey = payload_key
   ephemeral_encryptor = crypto.alloc({force_js : true})
   ephemeral_encryptor.genBoxPair()
@@ -88,7 +88,7 @@ exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
       if error.message is 'TweetNaCl box_open_afternm failed!' or error.message is 'Sodium box_open_afternm failed!' then continue
       else throw error
 
-  if payload_key.length is 0 then throw new Error('You are not a recipient!')
+  unless payload_key? then throw new Error('You are not a recipient!')
 
   #open the sender secretbox
   payload_decryptor = crypto.alloc({force_js : false})
