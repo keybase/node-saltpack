@@ -85,7 +85,8 @@ exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
     try
       payload_key = decryptor.box_open_afternm({ciphertext : recipients[recipient_index], nonce : nonce.nonceForPayloadKeyBox(), secret})
     catch error
-      throw error
+      if error.message is 'TweetNaCl box_open_afternm failed!' or error.message is 'Sodium box_open_afternm failed!' then continue
+      else throw error
 
   if payload_key.length is 0 then throw new Error('You are not a recipient!')
 

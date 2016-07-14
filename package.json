@@ -11,7 +11,7 @@
   "license": "BSD-3-Clause",
   "dependencies": {
     "iced-runtime": "^1.0.3",
-    "keybase-nacl": "^1.0.7",
+    "keybase-nacl": "^1.0.8",
     "keybase-chunk-stream": "^0.1.2",
     "node-armor-x": "^0.0.3",
     "purepack": "^1.0.4"
