@@ -39,10 +39,11 @@ exports.test_packet_pipeline = (T, cb) ->
   block_num = 0
   plaintext = prng(prng(1)[0])
 
+  encryptor.secretKey = payload_key
   payload_list = payload.generate_encryption_payload_packet(encryptor, plaintext, block_num, header_hash, packed_header.mac_keys)
 
   decryptor.secretKey = payload_key
   expected_payload = payload.parse_encryption_payload_packet(decryptor, payload_list, block_num, header_hash, mac_key, recipient_index)
 
-  T.equal(plaintext, expected_plaintext, "Plaintexts didn't match")
+  T.equal(plaintext, expected_payload, "Plaintexts didn't match")
   cb()
