@@ -10,13 +10,14 @@ attached_sign_mode = 1
 detached_sign_mode = 2
 current_major = 1
 current_minor = 0
-crypto_onetimeauth_BYTES = 32
+crypto_auth_BYTES = 32
 crypto_secretkey_BYTES = 32
 
 compute_mac_key = (encryptor, header_hash, pubkey) ->
-  zero_bytes = Buffer.alloc(crypto_onetimeauth_BYTES)
+  zero_bytes = Buffer.alloc(32)
   mac_box = encryptor.encrypt({plaintext : zero_bytes, nonce : nonce.nonceForMACKeyBox(header_hash), pubkey})
-  return mac_box.slice(-crypto_onetimeauth_BYTES)
+  # take last crypto_auth_BYTES bytes of MAC box
+  return mac_box.slice(-crypto_auth_BYTES)
 
 exports.generate_encryption_header_packet = (encryptor, recipients) ->
   header_list = []
@@ -72,18 +73,19 @@ exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
 
   #find the payload key box
   found = false
-  payload_key = new Buffer([])
-  for auth_index in [0...recipients.length]
-    if util.bufeq_secure(recipients[auth_index][0], decryptor.publicKey)
-      payload_key = decryptor.box_open_afternm({ciphertext : recipients[auth_index][1], nonce : nonce.nonceForPayloadKeyBox(), secret})
+  payload_key = null
+  for recipient_index in [0...recipients.length]
+    if util.bufeq_secure(recipients[recipient_index][0], decryptor.publicKey)
+      payload_key = decryptor.box_open_afternm({ciphertext : recipients[recipient_index][1], nonce : nonce.nonceForPayloadKeyBox(), secret})
       found = true
       break
 
-  if not found then for auth_index in [0...recipients.length]
+  #check for anonymous recipients
+  if not found then for recipient_index in [0...recipients.length]
     try
-      payload_key = decryptor.box_open_afternm({ciphertext : recipients[auth_index], nonce : nonce.nonceForPayloadKeyBox(), secret})
+      payload_key = decryptor.box_open_afternm({ciphertext : recipients[recipient_index], nonce : nonce.nonceForPayloadKeyBox(), secret})
     catch error
-      continue
+      throw error
 
   if payload_key.length is 0 then throw new Error('You are not a recipient!')
 
@@ -95,4 +97,4 @@ exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
   #compute the MAC key
   mac_key = compute_mac_key(decryptor, header_hash, sender_pubkey)
 
-  return {header_list, header_hash, payload_key, sender_pubkey, mac_key, auth_index}
+  return {header_list, header_hash, payload_key, sender_pubkey, mac_key, recipient_index}
