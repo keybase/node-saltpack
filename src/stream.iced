@@ -10,11 +10,10 @@ saltpack_block_len = (1024**2)
 noop = () ->
 
 exports.NaClEncryptStream = class NaClEncryptStream extends stream.ChunkStream
-  encrypt = (chunk) ->
-    payload_secretbox = @encryptor.secretbox({plaintext : chunk, nonce : nonce.nonceForChunkSecretBox(@block_num)})
-    {_, payload_packet} = payload.generate_encryption_payload_packet(@header_hash, @mac_keys, payload_secretbox, @block_num)
+  _encrypt : (chunk) =>
+    payload_list = payload.generate_encryption_payload_packet(@encryptor, chunk, @block_num, @header_hash, @mac_keys)
     ++@block_num
-    return payload_packet
+    return payload_list
 
   constructor : (pk, sk, @recipients) ->
     @encryptor = nacl.alloc({force_js : false})
@@ -25,21 +24,21 @@ exports.NaClEncryptStream = class NaClEncryptStream extends stream.ChunkStream
     @header_hash = null
     @mac_keys = null
     @block_num = 0
-    super(encrypt, saltpack_block_len, true, {writableObjectMode : false, readableObjectMode : true})
+    super(@_encrypt, saltpack_block_len, true, {writableObjectMode : false, readableObjectMode : true})
 
   _transform : (chunk, encoding, cb) ->
-    if not @header_written
-      {_, @header_hash, header_packet, @mac_keys} = header.generate_encryption_header_packet(@encryptor, @recipients)
-      @push(header_packet)
+    if @header_written
+      super(chunk, encoding, cb)
+    else
+      {header_intermediate, @header_hash, @mac_keys, payload_key} = header.generate_encryption_header_packet(@encryptor, @recipients)
+      @encryptor.secretKey = payload_key
+      @push(msgpack.encode(header_intermediate))
       @header_written = true
       cb()
-    else
-      console.log('payloading')
-      super(chunk, encoding, cb)
 
   _flush : (cb) ->
     super(noop)
-    @push(encrypt(new Buffer('')))
+    @push(@_encrypt(new Buffer('')))
     cb()
 
 class NaClDecryptStream extends stream.ChunkStream
