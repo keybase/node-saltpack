@@ -34,7 +34,7 @@ exports.test_header_pipeline = (T, cb) ->
   T.equal(packed_header.mac_keys[recipient_index], mac_key, "MAC keys didn't match: packed key = #{packed_header.mac_keys[recipient_index]}, unpacked key = #{mac_key}")
   cb()
 
-exports.test_packet_pipeline = (T, cb) ->
+exports.test_payload_pipeline = (T, cb) ->
   {packed_header, _, encryptor, decryptor} = gen_header()
   {header_list, header_hash, payload_key, sender_pubkey, mac_key, recipient_index} = header.parse_encryption_header_packet(decryptor, packed_header.header_intermediate)
 

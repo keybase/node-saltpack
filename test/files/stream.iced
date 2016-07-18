@@ -1,6 +1,6 @@
-armor = require('node-armor-x')
 nacl = require('keybase-nacl')
-stream = require('../../src/stream-div.iced')
+msgpack = require('msgpack-lite')
+stream = require('../../src/stream.iced')
 to_buf = require('../../src/stream-to-buffer.iced')
 {prng} = require('crypto')
 
@@ -18,9 +18,9 @@ alice_and_bob = () ->
 
 # generates a random recipients list with the specified public key inserted somewhere and junk everywhere else
 gen_recipients = (pk) ->
-  recipient_index = prng(1)[0]
+  recipient_index = Math.ceil(Math.random()*20)
   recipients_list = []
-  for i in [0...(recipient_index + prng(1)[0])]
+  for i in [0...(recipient_index + 2)]
     recipients_list.push(prng(32))
   recipients_list[recipient_index] = pk
   return {recipients_list, recipient_index}
@@ -37,43 +37,22 @@ stream_random_data = (strm, len) ->
   strm.end()
   data
 
-random_megabyte_to_ten = () -> (1024**2)*(Math.floor(Math.random()*9)+1)
+random_megabyte_to_ten = () -> Math.floor((1024**2)*(Math.random()*9)+1)
 
 # Test NaCl
-exports.test_nacl_encrypt_stream = (T, cb) ->
+exports.test_nacl_pipeline = (T, cb) ->
   {alice, bob} = alice_and_bob()
   {recipients_list, recipient_index} = gen_recipients(bob.publicKey)
-  enc = new stream.NaClEncryptStream(alice, recipients_list)
+  encryptor = new stream.NaClEncryptStream(alice, recipients_list)
+  packer = msgpack.createEncodeStream()
+  unpacker = msgpack.createDecodeStream()
+  decryptor = new stream.NaClDecryptStream(bob)
   stb = new to_buf.StreamToBuffer()
-  enc.pipe(stb)
-  data = stream_random_data(enc, random_megabyte_to_ten())
-  console.log('BUFFER BELOW')
-  console.log(stb.getBuffer())
-  cb()
 
-#==========================================================
-#Tests an entire saltpack pipeline
-#==========================================================
-
-test_encrypt_pack_armor = (T, cb) ->
-  {alice, _} = alice_and_bob()
-  encryptor = new stream.EncryptStream(alice.publicKey, alice.secretKey, gen_recipients(prng(32)), true)
-  stb = new to_buf.StreamToBuffer()
-  encryptor.nacl_stream.pipe(stb)
-  input = stream_random_data(encryptor.nacl_stream, random_megabyte_to_ten())
-  output = stb.getBuffer()
-  console.log(output)
-  cb()
-
-test_encrypt_pack_armor_dearmor_unpack_decrypt = (T, cb) ->
-  {alice, bob} = alice_and_bob()
-  
-  encryptor = new stream.EncryptStream(alice.publicKey, alice.secretKey, gen_recipients(bob.publicKey), true)
-  decryptor = new stream.DecryptStream(bob.publicKey, bob.secretKey, true)
-  stb = new to_buf.StreamToBuffer()
-  encryptor.pipe(decryptor.first_stream)
+  encryptor.pipe(decryptor)
   decryptor.pipe(stb)
-  input = stream_random_data(encryptor.nacl_stream, prng(1)[0]*2)
-  output = stb.getBuffer()
-  T.equal(input, output, "Pipeline failed")
+  data = stream_random_data(encryptor, random_megabyte_to_ten())
+  out = stb.getBuffer()
+  T.equal(data.length, out.length, 'Truncation or garbage bytes')
+  T.equal(data, out, 'Plaintext mismatch')
   cb()

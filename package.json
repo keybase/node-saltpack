@@ -12,7 +12,7 @@
   "dependencies": {
     "iced-runtime": "^1.0.3",
     "keybase-nacl": "^1.0.8",
-    "keybase-chunk-stream": "^0.1.4",
+    "keybase-chunk-stream": "^0.1.5",
     "node-armor-x": "^0.0.4",
     "msgpack-lite": "^0.1.20"
   },
