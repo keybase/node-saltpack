@@ -5,11 +5,12 @@ msgpack = require('msgpack-lite')
 payload = require('./payload.iced')
 header = require('./header.iced')
 nonce = require('./nonce.iced')
+format = require('./format.iced')
 
 saltpack_block_len = (1024**2)
 noop = () ->
 
-exports.NaClEncryptStream = class NaClEncryptStream extends stream.ChunkStream
+class NaClEncryptStream extends stream.ChunkStream
   _encrypt : (chunk) =>
     payload_list = payload.generate_encryption_payload_packet(@_encryptor, chunk, @_block_num, @_header_hash, @_mac_keys)
     ++@_block_num
@@ -27,7 +28,7 @@ exports.NaClEncryptStream = class NaClEncryptStream extends stream.ChunkStream
 
   _flush : (cb) ->
     super(noop)
-    @push(@_encrypt(new Buffer('')))
+    @push(@_encrypt(new Buffer([])))
     cb()
 
   constructor : (@_encryptor, @_recipients) ->
@@ -35,9 +36,9 @@ exports.NaClEncryptStream = class NaClEncryptStream extends stream.ChunkStream
     @_block_num = 0
     @_mac_keys = null
     @_header_hash = null
-    super(@_encrypt, saltpack_block_len, true, {writableObjectMode : false, readableObjectMode : true})
+    super(@_encrypt, {block_size : saltpack_block_len, exact_chunking : true, writableObjectMode : false, readableObjectMode : true})
 
-exports.NaClDecryptStream = class NaClDecryptStream extends stream.ChunkStream
+class NaClDecryptStream extends stream.ChunkStream
   _decrypt : (chunk) =>
     payload_text = payload.parse_encryption_payload_packet(@_decryptor, chunk, @_block_num, @_header_hash, @_mac_key, @_recipient_index)
     ++@_block_num
@@ -61,4 +62,52 @@ exports.NaClDecryptStream = class NaClDecryptStream extends stream.ChunkStream
     @_mac_key = null
     @_recipient_index = -1
     @_block_num = 0
-    super(@_decrypt, saltpack_block_len, true, {writableObjectMode : true, readableObjectMode : false})
+    super(@_decrypt, {block_size : saltpack_block_len, exact_chunking : true, writableObjectMode : true, readableObjectMode : false})
+
+#===========================================================
+
+exports.EncryptStream = class EncryptStream
+  constructor : (encryptor, recipients, do_armoring) ->
+    @nacl_stream = new NaClEncryptStream(encryptor, recipients)
+    @pack_stream = msgpack.createEncodeStream()
+    @nacl_stream.pipe(@pack_stream)
+    @last_stream = @pack_stream
+    if do_armoring
+      @armor_stream = new armor.stream.StreamEncoder(armor.encoding.b62.encoding)
+      @format_stream = new format.FormatStream()
+      @pack_stream.pipe(@armor_stream).pipe(@format_stream)
+      @last_stream = @format_stream
+
+  write : (plaintext, cb) ->
+    @nacl_stream.write(plaintext)
+    cb()
+
+  end : (cb) ->
+    # attaches an end listener to the last stream, and closes the first stream. the callback is executed when all streams close
+    @last_stream.on('finish', cb)
+    @nacl_stream.end()
+
+  pipe : (dest) ->
+    @last_stream.pipe(dest)
+
+exports.DecryptStream = class DecryptStream
+  constructor : (decryptor, do_armoring) ->
+    @unpack_stream = msgpack.createDecodeStream()
+    @nacl_stream = new NaClDecryptStream(decryptor)
+    @unpack_stream.pipe(@nacl_stream)
+    @first_stream = @unpack_stream
+    if do_armoring
+      @dearmor_stream = new armor.stream.StreamDecoder(armor.encoding.b62.encoding)
+      @dearmor_stream.pipe(@unpack_stream)
+      @first_stream = @dearmor_stream
+
+  write : (plaintext, cb) ->
+    @first_stream.write(plaintext)
+    cb()
+
+  end : (cb) ->
+    @nacl_stream.on('finish', cb)
+    @first_stream.end()
+
+  pipe : (dest) ->
+    @nacl_stream.pipe(dest)

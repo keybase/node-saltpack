@@ -26,6 +26,7 @@ exports.generate_encryption_payload_packet = (payload_encryptor, plaintext, bloc
 
   # compute the authenticators
   step1_hash = step1(header_hash, block_num, payload_secretbox)
+  console.log("#{header_hash.toString('hex')}, #{block_num}")
   authenticators = []
   for mac_key in mac_keys
     authenticator = compute_authenticator(step1_hash, mac_key)

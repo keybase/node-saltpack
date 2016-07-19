@@ -3,12 +3,12 @@ stream = require('stream')
 exports.StreamToBuffer = class StreamToBuffer extends stream.Transform
 
   constructor : (options) ->
-    @buf = new Buffer([])
+    @bufs = []
     super(options)
 
   _write : (chunk, encoding, cb) ->
-    @buf = Buffer.concat([@buf, chunk])
+    @bufs.push(chunk)
     cb()
 
   getBuffer : () ->
-    return @buf
+    return Buffer.concat(@bufs)
