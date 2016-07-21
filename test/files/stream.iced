@@ -106,13 +106,3 @@ exports.test_real_saltpack = (T, cb) ->
   console.log('Send the following to Patrick:')
   console.log(stb.getBuffer().toString())
   cb()
-
-exports.test_streaming = (T, cb) ->
-  {alice, _} = alice_and_bob()
-  es = new stream.EncryptStream(alice, gen_recipients(crypto.randomBytes(32)), true)
-  es.pipe(process.stdout)
-  await stream_random_data(es, random_megabyte_to_ten(), defer(data))
-  await
-    es.last_stream.on('finish', defer())
-    es.end(() ->)
-  cb()
