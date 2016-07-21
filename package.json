@@ -14,7 +14,7 @@
     "keybase-chunk-stream": "^0.1.6",
     "keybase-nacl": "^1.0.8",
     "msgpack-lite": "^0.1.20",
-    "node-armor-x": "^0.0.4"
+    "node-armor-x": "0.0.5"
   },
   "author": "Mark Cohen",
   "devDependencies": {

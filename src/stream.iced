@@ -28,7 +28,7 @@ class NaClEncryptStream extends stream.ChunkStream
 
   _flush : (cb) ->
     super(noop)
-    @push(@_encrypt(new Buffer([])))
+    @push(@_encrypt(new Buffer('')))
     cb()
 
   constructor : (@_encryptor, @_recipients) ->
@@ -97,9 +97,10 @@ exports.DecryptStream = class DecryptStream
     @unpack_stream.pipe(@nacl_stream)
     @first_stream = @unpack_stream
     if do_armoring
+      @deformat_stream = new format.DeformatStream()
       @dearmor_stream = new armor.stream.StreamDecoder(armor.encoding.b62.encoding)
-      @dearmor_stream.pipe(@unpack_stream)
-      @first_stream = @dearmor_stream
+      @deformat_stream.pipe(@dearmor_stream).pipe(@unpack_stream)
+      @first_stream = @deformat_stream
 
   write : (plaintext, cb) ->
     @first_stream.write(plaintext)
