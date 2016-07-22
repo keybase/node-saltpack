@@ -23,7 +23,7 @@ gen_recipients = (pk) ->
   for i in [0...(recipient_index + 2)]
     recipients_list.push(crypto.randomBytes(32))
   recipients_list[recipient_index] = pk
-  return {recipients_list, recipient_index}
+  return recipients_list
 
 # writes random data in random chunk sizes to the given stream
 stream_random_data = (strm, len, cb) ->
@@ -49,12 +49,18 @@ stream_random_data = (strm, len, cb) ->
 
 random_megabyte_to_ten = () -> Math.floor((1024**2)*(Math.random()*9)+1)
 
-# Test NaCl
-_test_saltpack_pipeline = (do_armor, T, cb) ->
+#===============================================================================
+
+_test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
   {alice, bob} = alice_and_bob()
-  {recipients_list, recipient_index} = gen_recipients(bob.publicKey)
-  es = new stream.EncryptStream(alice, recipients_list, do_armor)
-  ds = new stream.DecryptStream(bob, do_armor)
+  recipients_list = gen_recipients(bob.publicKey)
+  if anon_recips
+    anonymized_recipients = []
+    anonymized_recipients.push(null) for [0...recipients_list.length]
+    es = new stream.EncryptStream({encryptor : alice, do_armoring, recipients : recipients_list, anonymized_recipients})
+  else
+    es = new stream.EncryptStream({encryptor : alice, do_armoring, recipients : recipients_list})
+  ds = new stream.DecryptStream({decryptor : bob, do_armoring})
   stb = new to_buf.StreamToBuffer()
   es.pipe(ds.first_stream)
   ds.pipe(stb)
@@ -84,17 +90,21 @@ exports.test_format_stream = (T, cb) ->
   cb()
 
 exports.test_saltpack_with_armor = (T, cb) ->
-  await _test_saltpack_pipeline(true, T, defer())
+  await _test_saltpack_pipeline(true, false, T, defer())
   cb()
 
 exports.test_saltpack_without_armor = (T, cb) ->
-  await _test_saltpack_pipeline(false, T, defer())
+  await _test_saltpack_pipeline(false, false, T, defer())
+  cb()
+
+exports.test_anonymous_recipients = (T, cb) ->
+  await _test_saltpack_pipeline(false, true, T, defer())
   cb()
 
 exports.test_real_saltpack = (T, cb) ->
   {alice, _} = alice_and_bob()
   patrick_keys = [new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex')]
-  es = new stream.EncryptStream(alice, patrick_keys, true)
+  es = new stream.EncryptStream({encryptor : alice, do_armoring : true, recipients : patrick_keys})
   stb = new to_buf.StreamToBuffer()
   es.pipe(stb)
   message = new Buffer('If you please--draw me a sheep!\n')

@@ -18,7 +18,7 @@ class NaClEncryptStream extends stream.ChunkStream
 
   _transform : (chunk, encoding, cb) ->
     if not @_header_written
-      {header_intermediate, header_hash, mac_keys, payload_key} = header.generate_encryption_header_packet(@_encryptor, @_recipients)
+      {header_intermediate, header_hash, mac_keys, payload_key} = header.generate_encryption_header_packet(@_encryptor, @_recipients, {anonymized_recipients : @_anonymized_recipients})
       @_header_hash = header_hash
       @_mac_keys = mac_keys
       @_encryptor.secretKey = payload_key
@@ -31,7 +31,7 @@ class NaClEncryptStream extends stream.ChunkStream
     @push(@_encrypt(new Buffer('')))
     cb()
 
-  constructor : (@_encryptor, @_recipients) ->
+  constructor : (@_encryptor, @_recipients, @_anonymized_recipients) ->
     @_header_written = false
     @_block_num = 0
     @_mac_keys = null
@@ -67,8 +67,8 @@ class NaClDecryptStream extends stream.ChunkStream
 #===========================================================
 
 exports.EncryptStream = class EncryptStream
-  constructor : (encryptor, recipients, do_armoring) ->
-    @nacl_stream = new NaClEncryptStream(encryptor, recipients)
+  constructor : ({encryptor, do_armoring, recipients, anonymized_recipients}) ->
+    @nacl_stream = new NaClEncryptStream(encryptor, recipients, anonymized_recipients)
     @pack_stream = msgpack.createEncodeStream()
     @nacl_stream.pipe(@pack_stream)
     @last_stream = @pack_stream
@@ -91,7 +91,7 @@ exports.EncryptStream = class EncryptStream
     @last_stream.pipe(dest)
 
 exports.DecryptStream = class DecryptStream
-  constructor : (decryptor, do_armoring) ->
+  constructor : ({decryptor, do_armoring}) ->
     @unpack_stream = msgpack.createDecodeStream()
     @nacl_stream = new NaClDecryptStream(decryptor)
     @unpack_stream.pipe(@nacl_stream)
