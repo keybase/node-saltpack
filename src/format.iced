@@ -4,9 +4,6 @@ util = require('./util.iced')
 space = new Buffer(' ')
 newline = new Buffer('\n')
 punctuation = new Buffer('.')
-_appname = 'KEYBASE'
-header = new Buffer("BEGIN#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
-footer = new Buffer("END#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
 
 words_per_line = 200
 chars_per_word = 15
@@ -31,16 +28,19 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
 
   _transform : (chunk, encoding, cb) ->
     if not @_header_written
-      @push(Buffer.concat([header, punctuation, space]))
+      @push(Buffer.concat([@_header, punctuation, space]))
       @_header_written = true
     super(chunk, encoding, cb)
 
   _flush : (cb) ->
     super(noop)
-    @push(Buffer.concat([punctuation, space, footer, punctuation]))
+    @push(Buffer.concat([punctuation, space, @_footer, punctuation]))
     cb()
 
-  constructor : () ->
+  constructor : (opts) ->
+    if opts?.brand? then _appname = opts.brand else _appname = 'KEYBASE'
+    @_header = new Buffer("BEGIN#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_footer = new Buffer("END#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_header_written = false
     @_word_count = 0
     super(@_format, {block_size : 15, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
@@ -65,7 +65,7 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
         # we found the period
         read_header = chunk[0...index]
         read_header = _strip(read_header)
-        unless util.bufeq_secure(read_header, _strip(header)) then throw new Error("Header failed to verify! Real header: #{_strip(header)} Header in question: #{read_header}")
+        unless util.bufeq_secure(read_header, _strip(@_header)) then throw new Error("Header failed to verify! Real header: #{_strip(@_header)} Header in question: #{read_header}")
         @_mode = _body_mode
         @block_size = 1
         @exact_chunking = false
@@ -88,7 +88,7 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
         ret = _strip(chunk[...index])
         # put any partial footer into extra
         @extra = chunk[index+punctuation.length+space.length...]
-        @block_size = footer.length
+        @block_size = @_footer.length
         @exact_chunking = true
         @_mode = _footer_mode
         # so that we can't come back to body mode
@@ -97,7 +97,7 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
     else if @_mode is _footer_mode
       read_footer = _strip(chunk)
-      unless util.bufeq_secure(read_footer, _strip(footer)) then throw new Error("Footer failed to verify! Real footer: #{_strip(footer)} Footer in question: #{read_footer}")
+      unless util.bufeq_secure(read_footer, _strip(@_footer)) then throw new Error("Footer failed to verify! Real footer: #{_strip(@_footer)} Footer in question: #{read_footer}")
       # so that we can't enter this if statement more than once
       _footer_mode = null
       return new Buffer('')
@@ -110,6 +110,9 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
   _flush : (cb) ->
     cb()
 
-  constructor : () ->
+  constructor : (opts) ->
+    if opts?.brand? then _appname = opts.brand else _appname = 'KEYBASE'
+    @_header = new Buffer("BEGIN#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_footer = new Buffer("END#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_mode = _header_mode
-    super(@_deformat, {block_size : (header.length + punctuation.length + space.length), exact_chunking : true, writableObjectMode : false, readableObjectMode : false})
+    super(@_deformat, {block_size : (@_header.length + punctuation.length + space.length), exact_chunking : true, writableObjectMode : false, readableObjectMode : false})

@@ -1,4 +1,4 @@
-{prng} = require('crypto')
+crypto = require('crypto')
 {createHash} = require('crypto')
 msgpack = require('msgpack-lite')
 crypto = require('keybase-nacl')
@@ -26,13 +26,16 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
   header_list.push(encryption_mode)
 
   payload_encryptor = crypto.alloc({force_js : true})
-  payload_key = prng(crypto_secretbox_KEYBYTES)
+  payload_key = crypto.randomBytes(crypto_secretbox_KEYBYTES)
   payload_encryptor.secretKey = payload_key
   ephemeral_encryptor = crypto.alloc({force_js : true})
   ephemeral_encryptor.genBoxPair()
   header_list.push(ephemeral_encryptor.publicKey)
 
-  sender_sbox = payload_encryptor.secretbox({plaintext : encryptor.publicKey, nonce : nonce.nonceForSenderKeySecretBox()})
+  # support anonymous senders
+  sender_key = if encryptor.publicKey? then encryptor.publicKey else payload_key
+
+  sender_sbox = payload_encryptor.secretbox({plaintext : sender_key, nonce : nonce.nonceForSenderKeySecretBox()})
   header_list.push(sender_sbox)
 
   recipients_list = []
