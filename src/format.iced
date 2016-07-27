@@ -1,5 +1,5 @@
 stream = require('keybase-chunk-stream')
-util = require('./util.iced')
+util = require('./util')
 
 space = new Buffer(' ')
 newline = new Buffer('\n')
@@ -38,9 +38,9 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
     cb()
 
   constructor : (opts) ->
-    if opts?.brand? then _appname = opts.brand else _appname = 'KEYBASE'
-    @_header = new Buffer("BEGIN#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
-    @_footer = new Buffer("END#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    if opts?.brand? then _brand = opts.brand else _brand = 'KEYBASE'
+    @_header = new Buffer("BEGIN#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_footer = new Buffer("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_header_written = false
     @_word_count = 0
     super(@_format, {block_size : 15, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
@@ -108,11 +108,11 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
   # we should never have anything to flush
   _flush : (cb) ->
-    cb()
+    super(cb)
 
   constructor : (opts) ->
-    if opts?.brand? then _appname = opts.brand else _appname = 'KEYBASE'
-    @_header = new Buffer("BEGIN#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
-    @_footer = new Buffer("END#{space}#{_appname}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    if opts?.brand? then _brand = opts.brand else _brand = 'KEYBASE'
+    @_header = new Buffer("BEGIN#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_footer = new Buffer("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_mode = _header_mode
     super(@_deformat, {block_size : (@_header.length + punctuation.length + space.length), exact_chunking : true, writableObjectMode : false, readableObjectMode : false})

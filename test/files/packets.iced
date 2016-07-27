@@ -1,21 +1,22 @@
-{prng} = require('crypto')
-main = require('keybase-nacl')
-header = require('../../src/header.iced')
-payload = require('../../src/payload.iced')
-nonce = require('../../src/nonce.iced')
+crypto = require('crypto')
+nacl = require('keybase-nacl')
+saltpack = require('../..')
+header = saltpack.lowlevel.header
+payload = saltpack.lowlevel.payload
+nonce = saltpack.lowlevel.nonce
 
 gen_encryptors = () ->
-  encryptor = main.alloc({force_js : false})
-  decryptor = main.alloc({force_js : false})
+  encryptor = nacl.alloc({force_js : false})
+  decryptor = nacl.alloc({force_js : false})
   encryptor.genBoxPair()
   decryptor.genBoxPair()
   return {encryptor, decryptor}
 
 gen_recipients = (pk) ->
-  recipient_index = prng(1)[0]
+  recipient_index = crypto.randomBytes(1)[0]
   recipients_list = []
-  for i in [0...(recipient_index + prng(1)[0])]
-    recipients_list.push(prng(32))
+  for i in [0...(recipient_index + crypto.randomBytes(1)[0])]
+    recipients_list.push(crypto.randomBytes(32))
   recipients_list[recipient_index] = pk
   return {recipients_list, recipient_index}
 
@@ -39,7 +40,7 @@ exports.test_payload_pipeline = (T, cb) ->
   {header_list, header_hash, payload_key, sender_pubkey, mac_key, recipient_index} = header.parse_encryption_header_packet(decryptor, packed_header.header_intermediate)
 
   block_num = 0
-  plaintext = prng(prng(1)[0])
+  plaintext = crypto.randomBytes(crypto.randomBytes(1)[0])
 
   encryptor.secretKey = payload_key
   payload_list = payload.generate_encryption_payload_packet(encryptor, plaintext, block_num, header_hash, packed_header.mac_keys)

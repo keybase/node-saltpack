@@ -1,21 +1,18 @@
-{prng} = require('crypto')
-{createHash} = require('crypto')
-{createHmac} = require('crypto')
+crypto = require('crypto')
 msgpack = require('purepack')
-crypto = require('keybase-nacl')
-nonce = require('./nonce.iced')
-util = require('./util.iced')
+nonce = require('./nonce')
+util = require('./util')
 
 # HMAC-SHA512-256(step1 hash, mac_key)
 compute_authenticator = (hash, key) ->
-  hmac = createHmac('sha512', key)
+  hmac = crypto.createHmac('sha512', key)
   hmac.update(hash)
   return hmac.digest()[0...32]
 
 # sha512(header_hash + payload secretbox nonce + payload secretbox)
 step1 = (header_hash, block_num, payload_secretbox) ->
   step1_cat = Buffer.concat([header_hash, nonce.nonceForChunkSecretBox(block_num), payload_secretbox])
-  crypto_hash = createHash('sha512')
+  crypto_hash = crypto.createHash('sha512')
   crypto_hash.update(step1_cat)
   step1_hash = crypto_hash.digest()
   return step1_hash

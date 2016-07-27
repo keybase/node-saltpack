@@ -1,9 +1,8 @@
 crypto = require('crypto')
-{createHash} = require('crypto')
 msgpack = require('msgpack-lite')
-crypto = require('keybase-nacl')
-nonce = require('./nonce.iced')
-util = require('./util.iced')
+nacl = require('keybase-nacl')
+nonce = require('./nonce')
+util = require('./util')
 
 encryption_mode = 0
 attached_sign_mode = 1
@@ -25,10 +24,10 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
   header_list.push([current_major, current_minor])
   header_list.push(encryption_mode)
 
-  payload_encryptor = crypto.alloc({force_js : true})
+  payload_encryptor = nacl.alloc({force_js : true})
   payload_key = crypto.randomBytes(crypto_secretbox_KEYBYTES)
   payload_encryptor.secretKey = payload_key
-  ephemeral_encryptor = crypto.alloc({force_js : true})
+  ephemeral_encryptor = nacl.alloc({force_js : true})
   ephemeral_encryptor.genBoxPair()
   header_list.push(ephemeral_encryptor.publicKey)
 
@@ -48,7 +47,7 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
     recipients_list.push(rec_pair)
   header_list.push(recipients_list)
 
-  crypto_hash = createHash('sha512')
+  crypto_hash = crypto.createHash('sha512')
   header_intermediate = msgpack.encode(header_list)
   crypto_hash.update(header_intermediate)
   header_hash = crypto_hash.digest()
@@ -61,7 +60,7 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
 
 exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
   #unpack header
-  crypto_hash = createHash('sha512')
+  crypto_hash = crypto.createHash('sha512')
   crypto_hash.update(header_intermediate)
   header_hash = crypto_hash.digest()
   header_list = msgpack.decode(header_intermediate)
@@ -97,7 +96,7 @@ exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
   unless payload_key? then throw new Error('You are not a recipient!')
 
   #open the sender secretbox
-  payload_decryptor = crypto.alloc({force_js : false})
+  payload_decryptor = nacl.alloc({force_js : false})
   payload_decryptor.secretKey = payload_key
   sender_pubkey = payload_decryptor.secretbox_open({ciphertext : header_list[4], nonce : nonce.nonceForSenderKeySecretBox()})
 

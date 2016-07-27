@@ -1,8 +1,9 @@
 crypto = require('crypto')
 nacl = require('keybase-nacl')
-format = require('../../src/format.iced')
-stream = require('../../src/stream.iced')
-to_buf = require('../../src/stream-to-buffer.iced')
+saltpack = require('../..')
+format = saltpack.lowlevel.format
+stream = saltpack.stream
+to_buf = saltpack.lowlevel.to_buffer
 
 #==========================================================
 #Helper functions
