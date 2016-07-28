@@ -1,60 +1,13 @@
 crypto = require('crypto')
-nacl = require('keybase-nacl')
 saltpack = require('../..')
 format = saltpack.lowlevel.format
 stream = saltpack.stream
 to_buf = saltpack.lowlevel.to_buffer
-
-#==========================================================
-#Helper functions
-#==========================================================
-
-# generates two keypairs, named alice and bob
-alice_and_bob = () ->
-  alice = nacl.alloc({force_js : false})
-  bob = nacl.alloc({force_js : true})
-  alice.genBoxPair()
-  bob.genBoxPair()
-  return {alice, bob}
-
-# generates a random recipients list with the specified public key inserted somewhere and junk everywhere else
-gen_recipients = (pk) ->
-  recipient_index = Math.ceil(Math.random()*20)
-  recipients_list = []
-  for i in [0...(recipient_index + 2)]
-    recipients_list.push(crypto.randomBytes(32))
-  recipients_list[recipient_index] = pk
-  return recipients_list
-
-# writes random data in random chunk sizes to the given stream
-stream_random_data = (strm, len, cb) ->
-  written = 0
-  expected_results = []
-  while written < len
-    # generate random length
-    await crypto.randomBytes(1, defer(err, index))
-    if err then throw err
-    amt = (index[0] + 1)*16
-
-    # generate random bytes of length amt
-    await crypto.randomBytes(amt, defer(err, buf))
-    if err then throw err
-    written += buf.length
-    expected_results.push(buf)
-
-    # write the buffer
-    await strm.write(buf, defer(err))
-    if err then throw err
-
-  cb(Buffer.concat(expected_results))
-
-random_megabyte_to_ten = () -> Math.floor((1024**2)*(Math.random()*9)+1)
-
-#===============================================================================
+util = saltpack.lowlevel.util
 
 _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
-  {alice, bob} = alice_and_bob()
-  recipients_list = gen_recipients(bob.publicKey)
+  {alice, bob} = util.alice_and_bob()
+  recipients_list = util.gen_recipients(bob.publicKey)
   if anon_recips
     anonymized_recipients = []
     anonymized_recipients.push(null) for [0...recipients_list.length]
@@ -66,7 +19,7 @@ _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
   es.pipe(ds.first_stream)
   ds.pipe(stb)
 
-  await stream_random_data(es, random_megabyte_to_ten(), defer(data))
+  await util.stream_random_data(es, util.random_megabyte_to_ten(), defer(data))
   await
     stb.on('finish', defer())
     es.end(() ->)
@@ -103,7 +56,7 @@ exports.test_anonymous_recipients = (T, cb) ->
   cb()
 
 exports.test_real_saltpack = (T, cb) ->
-  {alice, _} = alice_and_bob()
+  {alice, _} = util.alice_and_bob()
   patrick_keys = [new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex')]
   es = new stream.EncryptStream({encryptor : alice, do_armoring : true, recipients : patrick_keys})
   stb = new to_buf.StreamToBuffer()

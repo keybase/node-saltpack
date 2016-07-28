@@ -24,17 +24,17 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
   header_list.push([current_major, current_minor])
   header_list.push(encryption_mode)
 
-  payload_encryptor = nacl.alloc({force_js : true})
+  payload_encryptor = nacl.alloc({force_js : false})
   payload_key = crypto.randomBytes(crypto_secretbox_KEYBYTES)
   payload_encryptor.secretKey = payload_key
-  ephemeral_encryptor = nacl.alloc({force_js : true})
+  ephemeral_encryptor = nacl.alloc({force_js : false})
   ephemeral_encryptor.genBoxPair()
   header_list.push(ephemeral_encryptor.publicKey)
 
   # support anonymous senders
-  sender_key = if encryptor.publicKey? then encryptor.publicKey else payload_key
+  encryptor = if encryptor.publicKey? then encryptor else ephemeral_encryptor
 
-  sender_sbox = payload_encryptor.secretbox({plaintext : sender_key, nonce : nonce.nonceForSenderKeySecretBox()})
+  sender_sbox = payload_encryptor.secretbox({plaintext : encryptor.publicKey, nonce : nonce.nonceForSenderKeySecretBox()})
   header_list.push(sender_sbox)
 
   recipients_list = []

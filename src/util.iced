@@ -1,7 +1,7 @@
+crypto = require('crypto')
+nacl = require('keybase-nacl')
 
-#---------------------------------------------------------
 # Constant-time buffer comparison
-#
 exports.bufeq_secure = (x,y) ->
   ret = if not x? and not y? then true
   else if not x? or not y? then false
@@ -12,3 +12,45 @@ exports.bufeq_secure = (x,y) ->
       check |= (x.readUInt8(i) ^ y.readUInt8(i))
     (check is 0)
   return ret
+
+# generates two keypairs, named alice and bob
+exports.alice_and_bob = (opts) ->
+  if opts?.force_js? then force_js = opts.force_js else force_js = false
+  alice = nacl.alloc({force_js})
+  bob = nacl.alloc({force_js})
+  alice.genBoxPair()
+  bob.genBoxPair()
+  return {alice, bob}
+
+# generates a random recipients list with the specified public key inserted somewhere and junk everywhere else
+exports.gen_recipients = (pk) ->
+  recipient_index = Math.ceil(Math.random()*20)
+  recipients_list = []
+  for i in [0...(recipient_index + 2)]
+    recipients_list.push(crypto.randomBytes(32))
+  recipients_list[recipient_index] = pk
+  return recipients_list
+
+# writes random data in random chunk sizes to the given stream
+exports.stream_random_data = (strm, len, cb) ->
+  written = 0
+  expected_results = []
+  while written < len
+    # generate random length
+    await crypto.randomBytes(1, defer(err, index))
+    if err then throw err
+    amt = (index[0] + 1)*16
+
+    # generate random bytes of length amt
+    await crypto.randomBytes(amt, defer(err, buf))
+    if err then throw err
+    written += buf.length
+    expected_results.push(buf)
+
+    # write the buffer
+    await strm.write(buf, defer(err))
+    if err then throw err
+
+  cb(Buffer.concat(expected_results))
+
+exports.random_megabyte_to_ten = () -> Math.floor((1024**2)*(Math.random()*9)+1)
