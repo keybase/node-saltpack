@@ -50,12 +50,13 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
   _header_mode = 0
   _body_mode = 1
   _footer_mode = 2
+  _strip_chars = Buffer.from('>\n\r\t ')
 
   _strip = (chunk) ->
     indicies = []
     ret = []
     for i in [0...chunk.length]
-      if chunk[i] isnt space[0] and chunk[i] isnt newline[0] then ret.push(chunk[i])
+      if _strip_chars.indexOf(chunk[i]) is -1 then ret.push(chunk[i])
     return Buffer.from(ret)
 
   _deformat : (chunk) ->
@@ -70,12 +71,12 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
         @block_size = 1
         @exact_chunking = false
         @extra = chunk[index+punctuation.length+space.length...]
+        # so that we can't enter this if statement more than once
+        _header_mode = null
+        return new Buffer('')
       else
         # something horrible happened
         throw new Error('Somehow didn\'t get a full header packet')
-      # so that we can't enter this if statement more than once
-      _header_mode = null
-      return new Buffer('')
 
     else if @_mode is _body_mode
       index = chunk.indexOf(punctuation[0])
@@ -108,7 +109,7 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
   # we should never have anything to flush
   _flush : (cb) ->
-    super(cb)
+    cb()
 
   constructor : (opts) ->
     if opts?.brand? then _brand = opts.brand else _brand = 'KEYBASE'
