@@ -1,9 +1,9 @@
 stream = require('keybase-chunk-stream')
 util = require('./util')
 
-space = new Buffer(' ')
-newline = new Buffer('\n')
-punctuation = new Buffer('.')
+space = Buffer.from(' ')
+newline = Buffer.from('\n')
+punctuation = Buffer.from('.')
 
 words_per_line = 200
 chars_per_word = 15
@@ -20,10 +20,13 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
     results = []
     for i in [0...chunk.length] by chars_per_word
       word = chunk[i...i+chars_per_word]
-      if @_word_count % 200 is 0 and @_word_count isnt 0 then word = Buffer.concat([word, newline])
-      else word = Buffer.concat([word, space])
-      ++@_word_count
-      results.push(word)
+      if i+chars_per_word >= chunk.length
+        results.push(word)
+      else
+        if @_word_count % 200 is 0 and @_word_count isnt 0 then word = Buffer.concat([word, newline])
+        else word = Buffer.concat([word, space])
+        ++@_word_count
+        results.push(word)
     return Buffer.concat(results)
 
   _transform : (chunk, encoding, cb) ->
@@ -39,11 +42,11 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
 
   constructor : (opts) ->
     if opts?.brand? then _brand = opts.brand else _brand = 'KEYBASE'
-    @_header = new Buffer("BEGIN#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
-    @_footer = new Buffer("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_header = Buffer.from("BEGIN#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_footer = Buffer.from("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_header_written = false
     @_word_count = 0
-    super(@_format, {block_size : 15, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
+    super(@_format, {block_size : 1, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
 
 exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
@@ -66,14 +69,14 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
         # we found the period
         read_header = chunk[0...index]
         read_header = _strip(read_header)
-        unless util.bufeq_secure(read_header, _strip(@_header)) then throw new Error("Header failed to verify! Real header: #{_strip(@_header)} Header in question: #{read_header}")
+        unless util.bufeq_secure(read_header, _strip(@_header)) then throw new Error("Header failed to verify!")
         @_mode = _body_mode
         @block_size = 1
         @exact_chunking = false
         @extra = chunk[index+punctuation.length+space.length...]
         # so that we can't enter this if statement more than once
         _header_mode = null
-        return new Buffer('')
+        return Buffer.from('')
       else
         # something horrible happened
         throw new Error('Somehow didn\'t get a full header packet')
@@ -98,10 +101,10 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
     else if @_mode is _footer_mode
       read_footer = _strip(chunk)
-      unless util.bufeq_secure(read_footer, _strip(@_footer)) then throw new Error("Footer failed to verify! Real footer: #{_strip(@_footer)} Footer in question: #{read_footer}")
+      unless util.bufeq_secure(read_footer, _strip(@_footer)) then throw new Error("Footer failed to verify!")
       # so that we can't enter this if statement more than once
       _footer_mode = null
-      return new Buffer('')
+      return Buffer.from('')
 
     else
       # something very bad happened
@@ -113,7 +116,7 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
   constructor : (opts) ->
     if opts?.brand? then _brand = opts.brand else _brand = 'KEYBASE'
-    @_header = new Buffer("BEGIN#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
-    @_footer = new Buffer("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_header = Buffer.from("BEGIN#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
+    @_footer = Buffer.from("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_mode = _header_mode
     super(@_deformat, {block_size : (@_header.length + punctuation.length + space.length), exact_chunking : true, writableObjectMode : false, readableObjectMode : false})

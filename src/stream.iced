@@ -28,7 +28,7 @@ class NaClEncryptStream extends stream.ChunkStream
 
   _flush : (cb) ->
     super(noop)
-    @push(@_encrypt(new Buffer('')))
+    @push(@_encrypt(Buffer.from('')))
     cb()
 
   constructor : (@_encryptor, @_recipients, @_anonymized_recipients) ->

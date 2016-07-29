@@ -32,9 +32,9 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
   header_list.push(ephemeral_encryptor.publicKey)
 
   # support anonymous senders
-  encryptor = if encryptor.publicKey? then encryptor else ephemeral_encryptor
+  sender_encryptor = if encryptor.publicKey? then encryptor else ephemeral_encryptor
 
-  sender_sbox = payload_encryptor.secretbox({plaintext : encryptor.publicKey, nonce : nonce.nonceForSenderKeySecretBox()})
+  sender_sbox = payload_encryptor.secretbox({plaintext : sender_encryptor.publicKey, nonce : nonce.nonceForSenderKeySecretBox()})
   header_list.push(sender_sbox)
 
   recipients_list = []
@@ -54,7 +54,7 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
 
   mac_keys = []
   for rec_pubkey in recipients
-    mac_keys.push(compute_mac_key(encryptor, header_hash, rec_pubkey))
+    mac_keys.push(compute_mac_key(sender_encryptor, header_hash, rec_pubkey))
 
   return {header_intermediate, header_hash, mac_keys, payload_key}
 
