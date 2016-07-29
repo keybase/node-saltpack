@@ -20,7 +20,7 @@ clean:
 setup:
 	npm install -d
 
-coverage:
+coverage: $(BUILD_STAMP)
 	./node_modules/.bin/istanbul cover $(ICED) test/run.iced
 
 test: test-server
