@@ -19,11 +19,13 @@ compute_mac_key = (encryptor, header_hash, pubkey) ->
   return mac_box.slice(-crypto_auth_KEYBYTES)
 
 exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
+  # create the header list and populate the quick stuff
   header_list = []
   header_list.push('saltpack')
   header_list.push([current_major, current_minor])
   header_list.push(encryption_mode)
 
+  # generate the payload and ephemeral keys
   payload_encryptor = nacl.alloc({force_js : false})
   payload_key = crypto.randomBytes(crypto_secretbox_KEYBYTES)
   payload_encryptor.secretKey = payload_key
@@ -33,10 +35,11 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
 
   # support anonymous senders
   sender_encryptor = if encryptor.publicKey? then encryptor else ephemeral_encryptor
-
+  # create the sender secretbox
   sender_sbox = payload_encryptor.secretbox({plaintext : sender_encryptor.publicKey, nonce : nonce.nonceForSenderKeySecretBox()})
   header_list.push(sender_sbox)
 
+  # create the recipients list
   recipients_list = []
   exposed_recipients = if opts?.anonymized_recipients then opts.anonymized_recipients else recipients
   for i in [0...recipients.length]
@@ -47,11 +50,13 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
     recipients_list.push(rec_pair)
   header_list.push(recipients_list)
 
+  # compute the header hash
   crypto_hash = crypto.createHash('sha512')
   header_intermediate = msgpack.encode(header_list)
   crypto_hash.update(header_intermediate)
   header_hash = crypto_hash.digest()
 
+  # compute the mac keys
   mac_keys = []
   for rec_pubkey in recipients
     mac_keys.push(compute_mac_key(sender_encryptor, header_hash, rec_pubkey))
