@@ -40,7 +40,7 @@ exports.test_format_stream = (T, cb) ->
   await
     stb.on('finish', defer())
     fs.end()
-  T.equal(str, stb.getBuffer(), "Formatting or deformatting fukt up: #{stb.getBuffer()}")
+  T.equal(str, stb.getBuffer(), "Incorrect formatting or deformatting: #{stb.getBuffer()}")
   cb()
 
 exports.test_saltpack_with_armor = (T, cb) ->

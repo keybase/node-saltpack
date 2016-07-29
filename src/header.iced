@@ -13,7 +13,8 @@ crypto_auth_KEYBYTES = 32
 crypto_secretbox_KEYBYTES = 32
 
 compute_mac_key = (encryptor, header_hash, pubkey) ->
-  zero_bytes = Buffer.alloc(crypto_auth_KEYBYTES)
+  zero_bytes = new Buffer(crypto_auth_KEYBYTES)
+  zero_bytes.fill(0)
   mac_box = encryptor.encrypt({plaintext : zero_bytes, nonce : nonce.nonceForMACKeyBox(header_hash), pubkey})
   # take last crypto_auth_BYTES bytes of MAC box
   return mac_box.slice(-crypto_auth_KEYBYTES)
