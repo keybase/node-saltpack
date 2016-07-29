@@ -33711,7 +33711,7 @@ exports.test_format_stream = function(T, cb) {
         fs.end();
         __iced_deferrals._fulfill();
       })(function() {
-        T.equal(str, stb.getBuffer(), "Formatting or deformatting fukt up: " + (stb.getBuffer()));
+        T.equal(str, stb.getBuffer(), "Incorrect formatting or deformatting: " + (stb.getBuffer()));
         return cb();
       });
     };
