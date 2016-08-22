@@ -31030,14 +31030,14 @@ exports.createContext = Script.createContext = function (context) {
 
 },{"indexof":106}],200:[function(require,module,exports){
 (function (Buffer){
-var alice, ct, err, es, iced, message, patrick_jack_and_mark_keys, prompt, saltpack, stb, _, __iced_deferrals, __iced_k, __iced_k_noop, _ref;
+var alice, ct, err, es, iced, patrick_jack_and_mark_keys, prompt, saltpack, stb, _, __iced_deferrals, __iced_k, __iced_k_noop, _ref;
 
 iced = require('iced-runtime');
 __iced_k = __iced_k_noop = function() {};
 
 saltpack = require('../..');
 
-prompt = window.prompt("Put all your secrets here", "");
+prompt = Buffer.concat([new Buffer(window.prompt("Put all your secrets here", "")), new Buffer('\n')]);
 
 _ref = saltpack.lowlevel.util.alice_and_bob(), alice = _ref.alice, _ = _ref._;
 
@@ -31053,8 +31053,6 @@ stb = new saltpack.lowlevel.util.StreamToBuffer();
 
 es.pipe(stb);
 
-message = new Buffer('If you please--draw me a sheep!\n');
-
 (function(_this) {
   return (function(__iced_k) {
     __iced_deferrals = new iced.Deferrals(__iced_k, {});
@@ -31064,7 +31062,7 @@ message = new Buffer('If you please--draw me a sheep!\n');
           return err = arguments[0];
         };
       })(),
-      lineno: 9
+      lineno: 8
     }));
     __iced_deferrals._fulfill();
   });
@@ -31076,14 +31074,13 @@ message = new Buffer('If you please--draw me a sheep!\n');
     (function(__iced_k) {
       __iced_deferrals = new iced.Deferrals(__iced_k, {});
       stb.on('finish', __iced_deferrals.defer({
-        lineno: 12
+        lineno: 11
       }));
       es.end(function() {});
       __iced_deferrals._fulfill();
     })(function() {
       ct = stb.getBuffer().toString();
-      window.prompt("Ciphertext: ", ct);
-      return console.log(ct);
+      return document.getElementById("ciphertext").innerHTML = ct;
     });
   };
 })(this));
