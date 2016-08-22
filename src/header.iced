@@ -1,5 +1,5 @@
 crypto = require('crypto')
-msgpack = require('msgpack-lite')
+msgpack = require('keybase-msgpack-lite')
 nacl = require('keybase-nacl')
 nonce = require('./nonce')
 util = require('./util')

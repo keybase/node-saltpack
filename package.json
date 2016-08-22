@@ -11,9 +11,10 @@
   "license": "BSD-3-Clause",
   "dependencies": {
     "iced-runtime": "^1.0.3",
-    "keybase-chunk-stream": "^0.1.6",
+    "istanbul": "^0.4.5",
+    "keybase-chunk-stream": "^0.1.7",
+    "keybase-msgpack-lite": "^0.1.25",
     "keybase-nacl": "^1.0.8",
-    "msgpack-lite": "^0.1.20",
     "node-armor-x": "0.0.7"
   },
   "author": "Mark Cohen",

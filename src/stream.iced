@@ -1,7 +1,7 @@
 stream = require('keybase-chunk-stream')
 nacl = require('keybase-nacl')
 armor = require('node-armor-x')
-msgpack = require('msgpack-lite')
+msgpack = require('keybase-msgpack-lite')
 payload = require('./payload')
 header = require('./header')
 nonce = require('./nonce')
@@ -28,7 +28,7 @@ class NaClEncryptStream extends stream.ChunkStream
 
   _flush : (cb) ->
     super(noop)
-    @push(@_encrypt(Buffer.from('')))
+    @push(@_encrypt(new Buffer('')))
     cb()
 
   constructor : (@_encryptor, @_recipients, @_anonymized_recipients) ->

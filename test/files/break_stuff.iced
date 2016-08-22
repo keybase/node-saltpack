@@ -1,5 +1,5 @@
 crypto = require('crypto')
-msgpack = require('msgpack-lite')
+msgpack = require('keybase-msgpack-lite')
 saltpack = require('../..')
 util = saltpack.lowlevel.util
 header = saltpack.lowlevel.header

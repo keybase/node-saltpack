@@ -57,8 +57,8 @@ exports.test_anonymous_recipients = (T, cb) ->
 
 exports.test_real_saltpack = (T, cb) ->
   {alice, _} = util.alice_and_bob()
-  patrick_and_jack_keys = [new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('12474e6642d963c63bd8171cea7ddaef1120555ccaa15b8835c253ff8f67783c', 'hex'), new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex')]
-  es = new stream.EncryptStream({encryptor : alice, do_armoring : true, recipients : patrick_and_jack_keys})
+  patrick_jack_and_mark_keys = [new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('12474e6642d963c63bd8171cea7ddaef1120555ccaa15b8835c253ff8f67783c', 'hex'), new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex'), new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex')]
+  es = new stream.EncryptStream({encryptor : alice, do_armoring : true, recipients : patrick_jack_and_mark_keys})
   stb = new to_buf.StreamToBuffer()
   es.pipe(stb)
   message = new Buffer('If you please--draw me a sheep!\n')
@@ -67,6 +67,6 @@ exports.test_real_saltpack = (T, cb) ->
   await
     stb.on('finish', defer())
     es.end(() ->)
-  console.log('Send the following to Patrick or Jack:')
+  console.log('Send the following to Patrick, Jack, or Mark:')
   console.log(stb.getBuffer().toString())
   cb()
