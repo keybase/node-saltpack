@@ -2,7 +2,6 @@ crypto = require('crypto')
 saltpack = require('../..')
 format = saltpack.lowlevel.format
 stream = saltpack.stream
-to_buf = saltpack.lowlevel.to_buffer
 util = saltpack.lowlevel.util
 
 _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
@@ -15,7 +14,7 @@ _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
   else
     es = new stream.EncryptStream({encryptor : alice, do_armoring, recipients : recipients_list})
   ds = new stream.DecryptStream({decryptor : bob, do_armoring})
-  stb = new to_buf.StreamToBuffer()
+  stb = new util.StreamToBuffer()
   es.pipe(ds.first_stream)
   ds.pipe(stb)
 
@@ -34,7 +33,7 @@ exports.test_format_stream = (T, cb) ->
   expected = new Buffer('BEGIN KEYBASE SALTPACK ENCRYPTED MESSAGE. kiZ8aa8yNOPC2nP QD3QM6XxeDhqkAl a8L62n0LCUdD09k W0OD4LbFMb7i26Y GYIaGDOpZaWvOqE ZRcweQTdTmTZlgD wkRICgu5i61hXKp aZR2S33yInCIzWf hk4MTSmfkXqoXEc 0tNoFOuGJuN9cLm Bl7l6DjAPsuZEfD oiDw6OsHwywZtxE sdCToPhvLSCLLvJ 7vb5yeF20g8EfuW Ul8QQtfW5n93drh z2XcHThZzhRsqV9 FfEjWxUsF1ZRFf8 4gE1jjMdhU93bh1 rus3a5IAwxma1Mc Bhv49YTqIEWeMwb 2fRjHaqbPnc90cB ZGcYFeuW0ntAO8F qJe247yrTciVAW6 0Red2sk8hQIroLT MFHhYBb4Ll3kO3R ci3WTJXt8BayZdT KmUozJ1h6BTkd7j xRgtUWykZSOlxX2 Ujr1UlHJsxnB9X0 qUa5jKg9MxQwh9u 4Kf6h7VCgze5C5X N7ZMPQot9OFE8ee MiEBOSePBUtRPoU 7kAVZwfZ07MtyxP RzgdYUQz5pQiU2U UQqPLmaHRzFTb6B bj8059QXuA4rSqr vi7e0MWaCvRSnsh ZWJE9K07hrFz3D5 vNl6RoQ6gyhFlW5 ybDiNyX0bYRch3P ZikQFMyqWF7MlOI cMOtWjD6SU1cVBp dvJMYERSPbWLEC5 tEFRt5A5XxwL9Xi JNcs4wgBXaZIUlX L5HLmwsqc2TkfZJ ejs03nWXcgMWHrK N1O1bbQeU26djEx fwSOeqO4ArDWvhl qlJy354pjC8e0nU hd3xcNpws8lHYh4 tNQ04ZOBDtdxVwS tnE207oRDI7Kbrs rQNriLImESLyH3v iCT3ZW1I0scmuGv DwUxIA3yiVryXJ6 4vf7vRnSIjtLzAl QAjWZcoCWuVwcXj p4auqPSuQwgXQ5S K9UU8KkEmmsXuix UJzkz5SsLWjUAy5 UHCwmtddO26F8Sk 5P8GH3mFKU1w47w 4jrHkJ6KIINE4Xu DnrkU3uhY9sOHXm UgQ1euYYaSpOn2b FUsy07vAHTFAPzG GNkPVGRSc91OMG0 xhaU1x3hnCYSjc8 eJzuqeI9R9ABRw0 x0tuoftAeksztI0 6kKmqVJoncjv0nP nYkoMCuvwlY8IOx zbW4oWNqYGED908 DcaygUbNezF9E7i Eu77VoXNF5j0v52 wR7XBhsrsdno3Rz VQ3w91ovggkMyaj fSdu4lbTyrftRsH oyhOOAkSDWWwT0t RfcuQAjEIVsOh5m AulcfkjAZNbpGNE YxwtAGQqqDEtDQ5 njL7oPCYiIlry0N uy0orz86FGjReU0 fAebHxlaRwgQ1Rc kpUn8Q8fSQGmHBD M4lCTZX7lrNk5J6 KA8raprFzBOBgs7 ZK648zLE7paJp3G i7xe1TvsFBIXAlJ pY5baFvXnqTJolr yuEdW1pcZyqIQlB LRjN2tZIemdqsW2 33CKwc9sb4Mu8VK l4woUo6gN2vgRco 5Kd9QzjFbUtPdmy yVxuFaTgqrAfSIg XXCLjdgGUxmkI6o pi8FXuwpr5uyfD0 UqKQFXU8UCUf9JJ Axce2kCuK1V5NOC UWxwh8P4ySi9pn1 d74XS4iAhEcPjQI vKCJfub1APeaEc2 CT3yJEkcpcqdzmO kwjAiqN43fZYHDM 3tfZXaddEdw3I3B x8YUgVDzDhyMwqf WJhyz2mADrVuDe4 GwSi7M48U43OtKd 7sNjinliXbW2lqR 4A79rOFdjaoWHcd T6uRCoIVxHKAvLB Coq1WrXC1KrDz1g mL2mBY8jJonRHLL pGE5VUGqQRRuZdT exwnKXWMYTUCmfT osFkuL5wJSWgNLn oOfOI1UVtcMOEyP tLSbc0rq0ehZcCM 581pU4VwaXMO8KY 45bUbQTpaSIzJrt 5zel3NQ1kP7Dayo yIkpxv2MqCJxfTn kWOQMSRvcfUltFG PLjP47p9Z6y6Uhv h6Vkop9HthEeyrB 3AClDoj1B7tTXvK RRV9YkoXmLKrpyH ungcp5wfpyvOMoi vMoBXBHvSpkG1Zb BdMqBvEgnVDFCQe UMp7D20eVEe5rqe PLIY7I0ZUKz8sbR AfJDI6hvJxkJjp0 KUEz3Vz1XrlpUth GjG4icGDoPnGlI0 tqyUIwnMzTGtEn3 gE9jGWIL3aGIPEn UzaHtC9EWhPYgoT HzuhU7K968mL3hv Ncmm0OK2SsIXzqw HyXxXyIBlhyygZq AaxgvnZf9nTQTrF qtKyCKhtPf0xleg qSG44dsciXBORne G42WJaM8E6ud39D OCHOdGCljoT4sZM lsOnQi7vs46HKgs hWiAKJirtzw1uK7 lBxfk4mY88XNgGo vKvCBk7A6KHHKKd TiDkUy3gxmfAeov oo4o6VIzTJoACF8 1mUEpbKIF3HiE59 KtMIOl0wKukVUq5 9KcoaBUcudL0OZX s232glM0mXro8l0 7g9ywPLOtWrbNkb J8UTQOP4Y50ZW3e QdxF3njZQlKWpXb vS9NjwyKB2dUIC9 kYePp8aYuaqpzVV RBrTKJfkd88u7Z1 jfaXZIADVVWGq9S cl1764v4Onh0jzp i7T7jSKfV4OD2ax U9giKjQMudK2YLm IUdqXVgpQB5nNZi Q13AvNJGiEvExif BtEjrRyWHOmeQxG ej2qAfpSX69Gs2r XKetqqCKG5f5V21 hQ4NlhqEicLo2IT zkxS7uLVgbeKSHE 4VUXOIULo. END KEYBASE SALTPACK ENCRYPTED MESSAGE.')
   fs = new format.FormatStream()
   ds = new format.DeformatStream()
-  stb = new to_buf.StreamToBuffer()
+  stb = new util.StreamToBuffer()
   fs.pipe(ds).pipe(stb)
   await fs.write(str, defer())
   await
@@ -59,7 +58,7 @@ exports.test_real_saltpack = (T, cb) ->
   {alice, _} = util.alice_and_bob()
   patrick_jack_and_mark_keys = [new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('12474e6642d963c63bd8171cea7ddaef1120555ccaa15b8835c253ff8f67783c', 'hex'), new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex'), new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex')]
   es = new stream.EncryptStream({encryptor : alice, do_armoring : true, recipients : patrick_jack_and_mark_keys})
-  stb = new to_buf.StreamToBuffer()
+  stb = new util.StreamToBuffer()
   es.pipe(stb)
   message = new Buffer('If you please--draw me a sheep!\n')
   await es.write(message, defer(err))

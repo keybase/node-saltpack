@@ -73,14 +73,12 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
       if index isnt -1
         # we found the period
         read_header = chunk[0...index]
-        read_header = _strip(read_header)
-        unless util.bufeq_secure(read_header, _strip(@_header)) then throw new Error("Header failed to verify!")
+        re = /[>\n\r\t ]*BEGIN[>\n\r\t ]+([a-zA-Z0-9]+)?[>\n\r\t ]+SALTPACK[>\n\r\t ]+(ENCRYPTED[>\n\r\t ]+MESSAGE)|(SIGNED[>\n\r\t ]+MESSAGE)|(DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*/m
+        unless re.test(read_header) then throw new Error("Header failed to verify!")
         @_mode = _body_mode
         @block_size = 1
         @exact_chunking = false
         @extra = chunk[index+punctuation.length+space.length...]
-        # so that we can't enter this if statement more than once
-        _header_mode = null
         return new Buffer('')
       else
         # something horrible happened
@@ -100,17 +98,13 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
         @block_size = @_footer.length
         @exact_chunking = true
         @_mode = _footer_mode
-        # so that we can't come back to body mode
-        body_mode = null
         return ret
 
     else if @_mode is _footer_mode
       read_footer = _strip(chunk)
       unless util.bufeq_secure(read_footer, _strip(@_footer)) then throw new Error("Footer failed to verify!")
-      # so that we can't enter this if statement more than once
-      _footer_mode = null
-      return new Buffer('')
-
+      # so that we can't enter this statement more than once
+      @_mode = -1
     else
       # something very bad happened
       throw new Error("Modes were off, somehow. SAD!")

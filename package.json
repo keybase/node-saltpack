@@ -1,5 +1,5 @@
 {
-  "name": "node-saltpack",
+  "name": "saltpack",
   "version": "0.0.1",
   "description": "An IcedCoffeeScript implementation of saltpack",
   "homepage": "https://github.com/keybase/node-saltpack",

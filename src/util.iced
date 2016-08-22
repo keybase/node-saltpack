@@ -1,3 +1,4 @@
+stream = require('stream')
 crypto = require('crypto')
 nacl = require('keybase-nacl')
 
@@ -54,3 +55,16 @@ exports.stream_random_data = (strm, len, cb) ->
   cb(Buffer.concat(expected_results))
 
 exports.random_megabyte_to_ten = () -> Math.floor((1024**2)*(Math.random()*9)+1)
+
+exports.StreamToBuffer = class StreamToBuffer extends stream.Transform
+
+  constructor : (options) ->
+    @bufs = []
+    super(options)
+
+  _write : (chunk, encoding, cb) ->
+    @bufs.push(chunk)
+    cb()
+
+  getBuffer : () ->
+    return Buffer.concat(@bufs)
