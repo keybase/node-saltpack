@@ -10,7 +10,7 @@ BROWSERIFY=node_modules/.bin/browserify
 lib/%.js: src/%.iced
 	$(ICED) -I browserify -c -o `dirname $@` $<
 
-$(BUILD_STAMP): lib/main.js lib/util.js lib/format.js lib/stream-to-buffer.js lib/nonce.js lib/header.js lib/payload.js lib/stream.js
+$(BUILD_STAMP): lib/main.js lib/util.js lib/format.js lib/nonce.js lib/header.js lib/payload.js lib/stream.js
 	date > $@
 
 clean:
@@ -30,7 +30,7 @@ build: $(BUILD_STAMP)
 browser: $(BROWSER)
 
 $(BROWSER): lib/main.js $(BUILD_STAMP)
-	$(BROWSERIFY) -s nacl $< > $@
+	$(BROWSERIFY) -s libweb $< > $@
 
 test-server: $(BUILD_STAMP)
 	$(ICED) test/run.iced
@@ -44,4 +44,7 @@ $(TEST_STAMP): test/browser/test.js
 test/browser/test.js: test/browser/main.iced $(BUILD_STAMP)
 	$(BROWSERIFY) -t icsify $< > $@
 
-.PHONY: clean setup test test-browser coverage
+browser-demo: $(TEST_STAMP) $(BUILD_STAMP)
+	node_modules/.bin/browserify -t icsify test/browser/demo.iced > test/browser/demo.js
+
+.PHONY: clean setup test test-browser coverage browser-demo
