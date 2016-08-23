@@ -5,6 +5,7 @@
 stream = require('keybase-chunk-stream')
 util = require('./util')
 
+# Punctuation - this is modular
 space = new Buffer(' ')
 newline = new Buffer('\n')
 punctuation = new Buffer('.')
@@ -12,21 +13,26 @@ punctuation = new Buffer('.')
 words_per_line = 200
 chars_per_word = 15
 
+# For working with the chunk streams
 noop = () ->
 
+# This stream takes basex'd input and writes framed output, as per https://saltpack.org/armoring#framing-the-basex-payload
 exports.FormatStream = class FormatStream extends stream.ChunkStream
 
+  # _format is the transform function passed to the chunk stream constructor
   _format : (chunk) ->
+    # this branch is only reached during the super's flush()
     if chunk.length < chars_per_word
       return chunk
     else
       results = []
+      # insert spaces and newlines where appropriate
       for i in [0...chunk.length] by chars_per_word
         word = chunk[i...i+chars_per_word]
         if i+chars_per_word >= chunk.length
           results.push(word)
         else
-          if @_word_count % 200 is 0 and @_word_count isnt 0
+          if @_word_count % words_per_line is 0 and @_word_count isnt 0
             word = Buffer.concat([word, newline])
           else
             word = Buffer.concat([word, space])
@@ -59,13 +65,9 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
   _body_mode = 1
   _footer_mode = 2
   _strip_chars = new Buffer('>\n\r\t ')
+  _strip_re = /[>\n\r\t ]/g
 
-  _strip = (chunk) ->
-    indicies = []
-    ret = []
-    for i in [0...chunk.length]
-      if _strip_chars.indexOf(chunk[i]) is -1 then ret.push(chunk[i])
-    return new Buffer(ret)
+  _strip = (chunk) -> chunk = chunk.toString().replace(_strip_re, "")
 
   _deformat : (chunk) ->
    if @_mode is _header_mode

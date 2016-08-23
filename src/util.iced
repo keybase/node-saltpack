@@ -56,6 +56,7 @@ exports.stream_random_data = (strm, len, cb) ->
 
 exports.random_megabyte_to_ten = () -> Math.floor((1024**2)*(Math.random()*9)+1)
 
+# A very simple transform stream that puts everything in a buffer for easy testing
 exports.StreamToBuffer = class StreamToBuffer extends stream.Transform
 
   constructor : (options) ->

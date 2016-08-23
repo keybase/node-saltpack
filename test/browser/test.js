@@ -36,7 +36,7 @@
           if (i + chars_per_word >= chunk.length) {
             results.push(word);
           } else {
-            if (this._word_count % 200 === 0 && this._word_count !== 0) {
+            if (this._word_count % words_per_line === 0 && this._word_count !== 0) {
               word = Buffer.concat([word, newline]);
             } else {
               word = Buffer.concat([word, space]);
@@ -87,7 +87,7 @@
   })(stream.ChunkStream);
 
   exports.DeformatStream = DeformatStream = (function(_super) {
-    var _body_mode, _footer_mode, _header_mode, _strip, _strip_chars;
+    var _body_mode, _footer_mode, _header_mode, _strip, _strip_chars, _strip_re;
 
     __extends(DeformatStream, _super);
 
@@ -99,16 +99,10 @@
 
     _strip_chars = new Buffer('>\n\r\t ');
 
+    _strip_re = /[>\n\r\t ]/g;
+
     _strip = function(chunk) {
-      var i, indicies, ret, _i, _ref;
-      indicies = [];
-      ret = [];
-      for (i = _i = 0, _ref = chunk.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
-        if (_strip_chars.indexOf(chunk[i]) === -1) {
-          ret.push(chunk[i]);
-        }
-      }
-      return new Buffer(ret);
+      return chunk = chunk.toString().replace(_strip_re, "");
     };
 
     DeformatStream.prototype._deformat = function(chunk) {
@@ -319,7 +313,7 @@
             nonce: nonce.nonceForPayloadKeyBox(),
             secret: secret
           });
-          if (payload_key != null) {
+          if ((payload_key != null) || payload_key.length === 0) {
             break;
           }
         } catch (_error) {

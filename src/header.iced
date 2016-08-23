@@ -94,7 +94,7 @@ exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
   if not found then for recipient_index in [0...recipients.length]
     try
       payload_key = decryptor.box_open_afternm({ciphertext : recipients[recipient_index][1], nonce : nonce.nonceForPayloadKeyBox(), secret})
-      break if payload_key?
+      break if payload_key? or payload_key.length is 0
     catch error
       if error.message is 'TweetNaCl box_open_afternm failed!' or error.message is 'Sodium box_open_afternm failed!' then continue
       else throw error
