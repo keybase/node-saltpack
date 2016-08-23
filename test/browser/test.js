@@ -34971,15 +34971,15 @@ exports.test_anonymous_recipients = function(T, cb) {
 };
 
 exports.test_real_saltpack = function(T, cb) {
-  var alice, err, es, message, patrick_jack_and_mark_keys, stb, _, ___iced_passed_deferral, __iced_deferrals, __iced_k, _ref;
+  var alice, err, es, message, people_keys, stb, _, ___iced_passed_deferral, __iced_deferrals, __iced_k, _ref;
   __iced_k = __iced_k_noop;
   ___iced_passed_deferral = iced.findDeferral(arguments);
   _ref = util.alice_and_bob(), alice = _ref.alice, _ = _ref._;
-  patrick_jack_and_mark_keys = [new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('12474e6642d963c63bd8171cea7ddaef1120555ccaa15b8835c253ff8f67783c', 'hex'), new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex'), new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex')];
+  people_keys = [new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('12474e6642d963c63bd8171cea7ddaef1120555ccaa15b8835c253ff8f67783c', 'hex'), new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex'), new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('7e1454c201e72d7f22ded1fe359d5817a4c969ad7f2b742450d4e5606372c87e', 'hex'), new Buffer('9322c883599f4440eda5c2d40b0e1590b569db171d6fec2a92fbe7e12f90b414', 'hex'), new Buffer('d8507ab27528c6118f525f2e4d0d99cfbebf1f399758f596057b573f6e01ed48', 'hex'), new Buffer('c51589346c15414cf18ab7c23fed27dc8055f69770d2f34f6ca141607cc34d63', 'hex'), new Buffer('720b0ce2a6f7a3aff279702d157aa78b1bd774273be18938f4c006c9aadac90d', 'hex'), new Buffer('196bcc720c24d0b9937e3d78b966d27ab3679eb23330d7d0ca39b57bb3bac256', 'hex'), new Buffer('5da375c0018da143c001fe426e39dde28f85d99d16a7d30b46dd235f4f6f5b59', 'hex'), new Buffer('ddc0f890b224bc698e4f843b046b1eeaf3455504b434837424bcb63132bec40c', 'hex'), new Buffer('d65361e0d119422d7fa2d461b1eb460fcf9e3d0ed864b5b06639526b787e3c3b', 'hex')];
   es = new stream.EncryptStream({
     encryptor: alice,
     do_armoring: true,
-    recipients: patrick_jack_and_mark_keys
+    recipients: people_keys
   });
   stb = new util.StreamToBuffer();
   es.pipe(stb);
@@ -34996,7 +34996,7 @@ exports.test_real_saltpack = function(T, cb) {
             return err = arguments[0];
           };
         })(),
-        lineno: 63
+        lineno: 77
       }));
       __iced_deferrals._fulfill();
     });
@@ -35011,7 +35011,7 @@ exports.test_real_saltpack = function(T, cb) {
           funcname: "test_real_saltpack"
         });
         stb.on('finish', __iced_deferrals.defer({
-          lineno: 66
+          lineno: 80
         }));
         es.end(function() {});
         __iced_deferrals._fulfill();
