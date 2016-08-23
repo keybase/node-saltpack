@@ -25,6 +25,8 @@ class NaClEncryptStream extends stream.ChunkStream
       {header_intermediate, header_hash, mac_keys, payload_key} = header.generate_encryption_header_packet(@_encryptor, @_recipients, {anonymized_recipients : @_anonymized_recipients})
       @_header_hash = header_hash
       @_mac_keys = mac_keys
+      unless @_encryptor?
+        @_encryptor = nacl.alloc({force_js : false})
       @_encryptor.secretKey = payload_key
       @push(header_intermediate)
       @_header_written = true

@@ -71,10 +71,12 @@ exports.test_real_saltpack = (T, cb) ->
     new Buffer('5da375c0018da143c001fe426e39dde28f85d99d16a7d30b46dd235f4f6f5b59', 'hex'),
     new Buffer('ddc0f890b224bc698e4f843b046b1eeaf3455504b434837424bcb63132bec40c', 'hex'),
     new Buffer('d65361e0d119422d7fa2d461b1eb460fcf9e3d0ed864b5b06639526b787e3c3b', 'hex')]
-  es = new stream.EncryptStream({encryptor : alice, do_armoring : true, recipients : people_keys})
+  alice.secretKey = null
+  alice.publicKey = null
+  es = new stream.EncryptStream({encryptor : null, do_armoring : true, recipients : people_keys})
   stb = new util.StreamToBuffer()
   es.pipe(stb)
-  message = new Buffer('If you please--draw me a sheep!\n')
+  message = new Buffer('Beware of the baobabs!\n')
   await es.write(message, defer(err))
   if err then throw err
   await
