@@ -43,7 +43,7 @@ class NaClEncryptStream extends stream.ChunkStream
     @_block_num = 0
     @_mac_keys = null
     @_header_hash = null
-    super(@_encrypt, {block_size : SALTPACK_BLOCK_LEN, exact_chunking : true, writableObjectMode : false, readableObjectMode : true})
+    super({transform_func : @_encrypt, block_size : SALTPACK_BLOCK_LEN, exact_chunking : true, writableObjectMode : false, readableObjectMode : true})
 
 
 
@@ -75,7 +75,7 @@ class NaClDecryptStream extends stream.ChunkStream
     @_mac_key = null
     @_recipient_index = -1
     @_block_num = 0
-    super(@_decrypt, {block_size : SALTPACK_BLOCK_LEN, exact_chunking : true, writableObjectMode : true, readableObjectMode : false})
+    super({transform_func : @_decrypt, block_size : SALTPACK_BLOCK_LEN, exact_chunking : true, writableObjectMode : true, readableObjectMode : false})
 
 #===========================================================
 

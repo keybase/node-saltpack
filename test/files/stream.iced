@@ -4,6 +4,8 @@ format = saltpack.lowlevel.format
 stream = saltpack.stream
 util = saltpack.lowlevel.util
 
+msg_length = util.random_megabyte_to_ten()/4
+
 _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
   {alice, bob} = util.alice_and_bob()
   recipients_list = util.gen_recipients(bob.publicKey)
@@ -18,7 +20,7 @@ _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
   es.pipe(ds.first_stream)
   ds.pipe(stb)
 
-  await util.stream_random_data(es, util.random_megabyte_to_ten(), defer(data))
+  await util.stream_random_data(es, msg_length, defer(data))
   await
     stb.on('finish', defer())
     es.end(() ->)
@@ -55,7 +57,6 @@ exports.test_anonymous_recipients = (T, cb) ->
   cb()
 
 exports.test_real_saltpack = (T, cb) ->
-  {alice, _} = util.alice_and_bob()
   people_keys = [
     new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'),
     new Buffer('12474e6642d963c63bd8171cea7ddaef1120555ccaa15b8835c253ff8f67783c', 'hex'),
@@ -71,12 +72,10 @@ exports.test_real_saltpack = (T, cb) ->
     new Buffer('5da375c0018da143c001fe426e39dde28f85d99d16a7d30b46dd235f4f6f5b59', 'hex'),
     new Buffer('ddc0f890b224bc698e4f843b046b1eeaf3455504b434837424bcb63132bec40c', 'hex'),
     new Buffer('d65361e0d119422d7fa2d461b1eb460fcf9e3d0ed864b5b06639526b787e3c3b', 'hex')]
-  alice.secretKey = null
-  alice.publicKey = null
   es = new stream.EncryptStream({encryptor : null, do_armoring : true, recipients : people_keys})
   stb = new util.StreamToBuffer()
   es.pipe(stb)
-  message = new Buffer('Beware of the baobabs!\n')
+  message = new Buffer("For millions of years flowers have been producing thorns. For millions of years sheep have been eating them all the same. And it's not serious, trying to understand why flowers go to such trouble to produce thorns that are good for nothing? It's not important, the war between the sheep and the flowers? It's no more serious and more important than the numbers that fat red gentleman is adding up? Suppose I happen to know a unique flower, one that exists nowhere in the world except on my planet, one that a little sheep can wipe out in a single bite one morning, just like that, without even realizing what he'd doing - that isn't important? If someone loves a flower of which just one example exists among all the millions and millions of stars, that's enough to make him happy when he looks at the stars. He tells himself 'My flower's up there somewhere...' But if the sheep eats the flower, then for him it's as if, suddenly, all the stars went out. And that isn't important?\n")
   await es.write(message, defer(err))
   if err then throw err
   await

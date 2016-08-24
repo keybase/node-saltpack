@@ -26,35 +26,22 @@
     __extends(FormatStream, _super);
 
     FormatStream.prototype._format = function(chunk) {
-      var i, results, word, _i, _ref;
-      if (chunk.length < chars_per_word) {
+      var res;
+      if (chunk.length < this.block_size) {
         return chunk;
-      } else {
-        results = [];
-        for (i = _i = 0, _ref = chunk.length; chars_per_word > 0 ? _i < _ref : _i > _ref; i = _i += chars_per_word) {
-          word = chunk.slice(i, i + chars_per_word);
-          if (i + chars_per_word >= chunk.length) {
-            results.push(word);
-          } else {
-            if (this._word_count % words_per_line === 0 && this._word_count !== 0) {
-              word = Buffer.concat([word, newline]);
-            } else {
-              word = Buffer.concat([word, space]);
-            }
-            ++this._word_count;
-            results.push(word);
-          }
-        }
-        return Buffer.concat(results);
       }
-    };
-
-    FormatStream.prototype._transform = function(chunk, encoding, cb) {
+      res = new Buffer('');
       if (!this._header_written) {
-        this.push(Buffer.concat([this._header, punctuation, space]));
+        res = Buffer.concat([this._header, punctuation, space]);
         this._header_written = true;
       }
-      return FormatStream.__super__._transform.call(this, chunk, encoding, cb);
+      this._word_count++;
+      if (this._word_count !== 200) {
+        res = Buffer.concat([res, chunk, space]);
+      } else {
+        res = Buffer.concat([res, chunk, newline]);
+      }
+      return res;
     };
 
     FormatStream.prototype._flush = function(cb) {
@@ -74,9 +61,10 @@
       this._footer = new Buffer("END" + space + _brand + space + "SALTPACK" + space + "ENCRYPTED" + space + "MESSAGE");
       this._header_written = false;
       this._word_count = 0;
-      FormatStream.__super__.constructor.call(this, this._format, {
-        block_size: 1,
-        exact_chunking: false,
+      FormatStream.__super__.constructor.call(this, {
+        transform_func: this._format,
+        block_size: 15,
+        exact_chunking: true,
         writableObjectMode: false,
         readableObjectMode: false
       });
@@ -87,7 +75,7 @@
   })(stream.ChunkStream);
 
   exports.DeformatStream = DeformatStream = (function(_super) {
-    var _body_mode, _footer_mode, _header_mode, _strip, _strip_chars, _strip_re;
+    var _body_mode, _footer_mode, _header_mode, _strip, _strip_re;
 
     __extends(DeformatStream, _super);
 
@@ -97,57 +85,59 @@
 
     _footer_mode = 2;
 
-    _strip_chars = new Buffer('>\n\r\t ');
-
     _strip_re = /[>\n\r\t ]/g;
 
     _strip = function(chunk) {
-      return chunk = chunk.toString().replace(_strip_re, "");
+      return chunk = new Buffer(chunk.toString().replace(_strip_re, ""));
     };
 
     DeformatStream.prototype._deformat = function(chunk) {
-      var index, re, read_footer, read_header, ret;
-      if (this._mode === _header_mode) {
-        index = chunk.indexOf(punctuation[0]);
-        if (index !== -1) {
-          read_header = chunk.slice(0, index);
-          re = /[>\n\r\t ]*BEGIN[>\n\r\t ]+([a-zA-Z0-9]+)?[>\n\r\t ]+SALTPACK[>\n\r\t ]+(ENCRYPTED[>\n\r\t ]+MESSAGE)|(SIGNED[>\n\r\t ]+MESSAGE)|(DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*/m;
-          if (!re.test(read_header)) {
-            throw new Error("Header failed to verify!");
+      var after_period, footer, header, index, re, ret;
+      switch (this._mode) {
+        case _header_mode:
+          index = chunk.indexOf(punctuation[0]);
+          if (index > 0) {
+            after_period = chunk.slice(index + 1);
+            header = Buffer.concat([this._partial, chunk.slice(0, index)]);
+            this._partial = new Buffer('');
+            re = /[>\n\r\t ]*BEGIN[>\n\r\t ]+([a-zA-Z0-9]+)?[>\n\r\t ]+SALTPACK[>\n\r\t ]+(ENCRYPTED[>\n\r\t ]+MESSAGE)|(SIGNED[>\n\r\t ]+MESSAGE)|(DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*/;
+            if (!re.test(header)) {
+              throw new Error("Header failed to verify!");
+            }
+            this._header = _strip(header);
+            this._mode = _body_mode;
+            this.block_size = 1;
+            this.exact_chunking = false;
+            return _strip(after_period);
+          } else {
+            this._partial = Buffer.concat([this._partial, chunk]);
+            return new Buffer('');
           }
-          this._mode = _body_mode;
-          this.block_size = 1;
-          this.exact_chunking = false;
-          this.extra = chunk.slice(index + punctuation.length + space.length);
-          return new Buffer('');
-        } else {
-          throw new Error('Somehow didn\'t get a full header packet');
-        }
-      } else if (this._mode === _body_mode) {
-        index = chunk.indexOf(punctuation[0]);
-        if (index === -1) {
-          return _strip(chunk);
-        } else {
-          ret = _strip(chunk.slice(0, index));
-          this.extra = chunk.slice(index + punctuation.length + space.length);
-          this.block_size = this._footer.length;
-          this.exact_chunking = true;
-          this._mode = _footer_mode;
-          return ret;
-        }
-      } else if (this._mode === _footer_mode) {
-        read_footer = _strip(chunk);
-        if (!util.bufeq_secure(read_footer, _strip(this._footer))) {
-          throw new Error("Footer failed to verify!");
-        }
-        return this._mode = -1;
-      } else {
-        throw new Error("Modes were off, somehow. SAD!");
+          break;
+        case _body_mode:
+          index = chunk.indexOf(punctuation[0]);
+          if (index === -1) {
+            return _strip(chunk);
+          } else {
+            ret = _strip(chunk.slice(0, index));
+            this._partial = chunk.slice(index + punctuation.length + space.length);
+            this._mode = _footer_mode;
+            return ret;
+          }
+          break;
+        case _footer_mode:
+          index = chunk.indexOf(punctuation[0]);
+          if (index > 0) {
+            footer = Buffer.concat([this._partial, _strip(chunk)]);
+            if (_strip(footer) !== this._header.slice(6)) {
+              throw new Error("Footer failed to verify!");
+            }
+            return new Buffer('');
+          } else {
+            this._partial = Buffer.concat([this._partial, chunk]);
+            return new Buffer('');
+          }
       }
-    };
-
-    DeformatStream.prototype._flush = function(cb) {
-      return cb();
     };
 
     function DeformatStream(opts) {
@@ -157,12 +147,13 @@
       } else {
         _brand = 'KEYBASE';
       }
-      this._header = new Buffer("BEGIN" + space + _brand + space + "SALTPACK" + space + "ENCRYPTED" + space + "MESSAGE");
-      this._footer = new Buffer("END" + space + _brand + space + "SALTPACK" + space + "ENCRYPTED" + space + "MESSAGE");
+      this._header = new Buffer('');
       this._mode = _header_mode;
-      DeformatStream.__super__.constructor.call(this, this._deformat, {
-        block_size: this._header.length + punctuation.length + space.length,
-        exact_chunking: true,
+      this._partial = new Buffer('');
+      DeformatStream.__super__.constructor.call(this, {
+        transform_func: this._deformat,
+        block_size: 1,
+        exact_chunking: false,
         writableObjectMode: false,
         readableObjectMode: false
       });
@@ -539,7 +530,8 @@
       this._block_num = 0;
       this._mac_keys = null;
       this._header_hash = null;
-      NaClEncryptStream.__super__.constructor.call(this, this._encrypt, {
+      NaClEncryptStream.__super__.constructor.call(this, {
+        transform_func: this._encrypt,
         block_size: SALTPACK_BLOCK_LEN,
         exact_chunking: true,
         writableObjectMode: false,
@@ -584,7 +576,8 @@
       this._mac_key = null;
       this._recipient_index = -1;
       this._block_num = 0;
-      NaClDecryptStream.__super__.constructor.call(this, this._decrypt, {
+      NaClDecryptStream.__super__.constructor.call(this, {
+        transform_func: this._decrypt,
         block_size: SALTPACK_BLOCK_LEN,
         exact_chunking: true,
         writableObjectMode: true,
@@ -21549,9 +21542,8 @@ module.exports = Array.isArray || function (arr) {
   exports.ChunkStream = ChunkStream = (function(_super) {
     __extends(ChunkStream, _super);
 
-    function ChunkStream(transform_func, _arg) {
-      this.transform_func = transform_func;
-      this.block_size = _arg.block_size, this.exact_chunking = _arg.exact_chunking, this.writableObjectMode = _arg.writableObjectMode, this.readableObjectMode = _arg.readableObjectMode;
+    function ChunkStream(_arg) {
+      this.transform_func = _arg.transform_func, this.block_size = _arg.block_size, this.exact_chunking = _arg.exact_chunking, this.writableObjectMode = _arg.writableObjectMode, this.readableObjectMode = _arg.readableObjectMode;
       this.extra = null;
       ChunkStream.__super__.constructor.call(this, {
         writableObjectMode: this.writableObjectMode,
@@ -21573,22 +21565,26 @@ module.exports = Array.isArray || function (arr) {
         this.extra = chunk;
       } else {
         if (this.exact_chunking) {
-          remainder = chunk.length - this.block_size;
+          while (chunk.length >= this.block_size) {
+            this.push(this.transform_func(chunk.slice(0, this.block_size)));
+            chunk = chunk.slice(this.block_size);
+          }
+          this.extra = chunk;
         } else {
           remainder = chunk.length % this.block_size;
+          if (remainder !== 0) {
+            this.extra = chunk.slice(chunk.length - remainder);
+            chunk = chunk.slice(0, chunk.length - remainder);
+          }
+          this.push(this.transform_func(chunk));
         }
-        if (remainder !== 0) {
-          this.extra = chunk.slice(chunk.length - remainder);
-          chunk = chunk.slice(0, chunk.length - remainder);
-        }
-        this.push(this.transform_func(chunk));
       }
       return cb();
     };
 
     ChunkStream.prototype._flush = function(cb) {
       if (!this.writableObjectMode) {
-        while (this.exact_chunking && this.extra && this.extra.length > this.block_size) {
+        while (this.exact_chunking && this.extra && this.extra.length >= this.block_size) {
           this.push(this.transform_func(this.extra.slice(0, this.block_size)));
           this.extra = this.extra.slice(this.block_size);
         }
@@ -24705,7 +24701,8 @@ function isNumber (x) {
           return _this.encoder.encode(x);
         };
       })(this);
-      StreamEncoder.__super__.constructor.call(this, f, {
+      StreamEncoder.__super__.constructor.call(this, {
+        transform_func: f,
         block_size: this.encoder.in_block_len,
         exact_chunking: false,
         writableObjectMode: false,
@@ -24728,7 +24725,8 @@ function isNumber (x) {
           return _this.decoder.decode(x);
         };
       })(this);
-      StreamDecoder.__super__.constructor.call(this, f, {
+      StreamDecoder.__super__.constructor.call(this, {
+        transform_func: f,
         block_size: this.decoder.out_block_len,
         exact_chunking: false,
         writableObjectMode: false,
@@ -34786,7 +34784,7 @@ exports.test_tweetnacl_anonymous_recipients = function(T, cb) {
 
 },{"../..":3,"crypto":76,"keybase-msgpack-lite":129}],226:[function(require,module,exports){
 (function (Buffer){
-var crypto, format, iced, saltpack, stream, util, __iced_k, __iced_k_noop, _test_saltpack_pipeline;
+var crypto, format, iced, msg_length, saltpack, stream, util, __iced_k, __iced_k_noop, _test_saltpack_pipeline;
 
 iced = require('iced-runtime');
 __iced_k = __iced_k_noop = function() {};
@@ -34800,6 +34798,8 @@ format = saltpack.lowlevel.format;
 stream = saltpack.stream;
 
 util = saltpack.lowlevel.util;
+
+msg_length = util.random_megabyte_to_ten() / 4;
 
 _test_saltpack_pipeline = function(do_armoring, anon_recips, T, cb) {
   var alice, anonymized_recipients, bob, data, ds, es, out, recipients_list, stb, ___iced_passed_deferral, __iced_deferrals, __iced_k, _i, _ref, _ref1;
@@ -34837,13 +34837,13 @@ _test_saltpack_pipeline = function(do_armoring, anon_recips, T, cb) {
       __iced_deferrals = new iced.Deferrals(__iced_k, {
         parent: ___iced_passed_deferral
       });
-      util.stream_random_data(es, util.random_megabyte_to_ten(), __iced_deferrals.defer({
+      util.stream_random_data(es, msg_length, __iced_deferrals.defer({
         assign_fn: (function() {
           return function() {
             return data = arguments[0];
           };
         })(),
-        lineno: 20
+        lineno: 22
       }));
       __iced_deferrals._fulfill();
     });
@@ -34854,7 +34854,7 @@ _test_saltpack_pipeline = function(do_armoring, anon_recips, T, cb) {
           parent: ___iced_passed_deferral
         });
         stb.on('finish', __iced_deferrals.defer({
-          lineno: 22
+          lineno: 24
         }));
         es.end(function() {});
         __iced_deferrals._fulfill();
@@ -34885,7 +34885,7 @@ exports.test_format_stream = function(T, cb) {
         funcname: "test_format_stream"
       });
       fs.write(str, __iced_deferrals.defer({
-        lineno: 37
+        lineno: 39
       }));
       __iced_deferrals._fulfill();
     });
@@ -34897,7 +34897,7 @@ exports.test_format_stream = function(T, cb) {
           funcname: "test_format_stream"
         });
         stb.on('finish', __iced_deferrals.defer({
-          lineno: 39
+          lineno: 41
         }));
         fs.end();
         __iced_deferrals._fulfill();
@@ -34920,7 +34920,7 @@ exports.test_saltpack_with_armor = function(T, cb) {
         funcname: "test_saltpack_with_armor"
       });
       _test_saltpack_pipeline(true, false, T, __iced_deferrals.defer({
-        lineno: 45
+        lineno: 47
       }));
       __iced_deferrals._fulfill();
     });
@@ -34942,7 +34942,7 @@ exports.test_saltpack_without_armor = function(T, cb) {
         funcname: "test_saltpack_without_armor"
       });
       _test_saltpack_pipeline(false, false, T, __iced_deferrals.defer({
-        lineno: 49
+        lineno: 51
       }));
       __iced_deferrals._fulfill();
     });
@@ -34964,7 +34964,7 @@ exports.test_anonymous_recipients = function(T, cb) {
         funcname: "test_anonymous_recipients"
       });
       _test_saltpack_pipeline(false, true, T, __iced_deferrals.defer({
-        lineno: 53
+        lineno: 55
       }));
       __iced_deferrals._fulfill();
     });
@@ -34976,13 +34976,10 @@ exports.test_anonymous_recipients = function(T, cb) {
 };
 
 exports.test_real_saltpack = function(T, cb) {
-  var alice, err, es, message, people_keys, stb, _, ___iced_passed_deferral, __iced_deferrals, __iced_k, _ref;
+  var err, es, message, people_keys, stb, ___iced_passed_deferral, __iced_deferrals, __iced_k;
   __iced_k = __iced_k_noop;
   ___iced_passed_deferral = iced.findDeferral(arguments);
-  _ref = util.alice_and_bob(), alice = _ref.alice, _ = _ref._;
   people_keys = [new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('12474e6642d963c63bd8171cea7ddaef1120555ccaa15b8835c253ff8f67783c', 'hex'), new Buffer('915a08512f4fba8fccb9a258998a3513679e457b6f444a6f4bfc613fe81b8b1c', 'hex'), new Buffer('83711fb9664c478e43c62cf21040726b10d2670b7dbb49d3a6fcd926a876ff1c', 'hex'), new Buffer('28536f6cd88b94772fc82b248163c5c7da76f75099be9e4bb3c7937f375ab70f', 'hex'), new Buffer('7e1454c201e72d7f22ded1fe359d5817a4c969ad7f2b742450d4e5606372c87e', 'hex'), new Buffer('9322c883599f4440eda5c2d40b0e1590b569db171d6fec2a92fbe7e12f90b414', 'hex'), new Buffer('d8507ab27528c6118f525f2e4d0d99cfbebf1f399758f596057b573f6e01ed48', 'hex'), new Buffer('c51589346c15414cf18ab7c23fed27dc8055f69770d2f34f6ca141607cc34d63', 'hex'), new Buffer('720b0ce2a6f7a3aff279702d157aa78b1bd774273be18938f4c006c9aadac90d', 'hex'), new Buffer('196bcc720c24d0b9937e3d78b966d27ab3679eb23330d7d0ca39b57bb3bac256', 'hex'), new Buffer('5da375c0018da143c001fe426e39dde28f85d99d16a7d30b46dd235f4f6f5b59', 'hex'), new Buffer('ddc0f890b224bc698e4f843b046b1eeaf3455504b434837424bcb63132bec40c', 'hex'), new Buffer('d65361e0d119422d7fa2d461b1eb460fcf9e3d0ed864b5b06639526b787e3c3b', 'hex')];
-  alice.secretKey = null;
-  alice.publicKey = null;
   es = new stream.EncryptStream({
     encryptor: null,
     do_armoring: true,
@@ -34990,7 +34987,7 @@ exports.test_real_saltpack = function(T, cb) {
   });
   stb = new util.StreamToBuffer();
   es.pipe(stb);
-  message = new Buffer('Beware of the baobabs!\n');
+  message = new Buffer("For millions of years flowers have been producing thorns. For millions of years sheep have been eating them all the same. And it's not serious, trying to understand why flowers go to such trouble to produce thorns that are good for nothing? It's not important, the war between the sheep and the flowers? It's no more serious and more important than the numbers that fat red gentleman is adding up? Suppose I happen to know a unique flower, one that exists nowhere in the world except on my planet, one that a little sheep can wipe out in a single bite one morning, just like that, without even realizing what he'd doing - that isn't important? If someone loves a flower of which just one example exists among all the millions and millions of stars, that's enough to make him happy when he looks at the stars. He tells himself 'My flower's up there somewhere...' But if the sheep eats the flower, then for him it's as if, suddenly, all the stars went out. And that isn't important?\n");
   (function(_this) {
     return (function(__iced_k) {
       __iced_deferrals = new iced.Deferrals(__iced_k, {
@@ -35003,7 +35000,7 @@ exports.test_real_saltpack = function(T, cb) {
             return err = arguments[0];
           };
         })(),
-        lineno: 79
+        lineno: 78
       }));
       __iced_deferrals._fulfill();
     });
@@ -35018,7 +35015,7 @@ exports.test_real_saltpack = function(T, cb) {
           funcname: "test_real_saltpack"
         });
         stb.on('finish', __iced_deferrals.defer({
-          lineno: 82
+          lineno: 81
         }));
         es.end(function() {});
         __iced_deferrals._fulfill();
