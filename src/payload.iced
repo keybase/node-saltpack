@@ -17,7 +17,7 @@ step1 = (header_hash, block_num, payload_secretbox) ->
   step1_hash = crypto_hash.digest()
   return step1_hash
 
-exports.generate_encryption_payload_packet = (payload_encryptor, plaintext, block_num, header_hash, mac_keys) ->
+exports.generate_encryption_payload_packet = ({payload_encryptor, plaintext, block_num, header_hash, mac_keys}) ->
   # perform nacl encryption of payload
   payload_secretbox = payload_encryptor.secretbox({plaintext, nonce : nonce.nonceForChunkSecretBox(block_num)})
 
@@ -30,7 +30,7 @@ exports.generate_encryption_payload_packet = (payload_encryptor, plaintext, bloc
 
   return [authenticators, payload_secretbox]
 
-exports.parse_encryption_payload_packet = (payload_decryptor, payload_list, block_num, header_hash, mac_key, recipient_index) ->
+exports.parse_encryption_payload_packet = ({payload_decryptor, payload_list, block_num, header_hash, mac_key, recipient_index}) ->
   # verify that we are an authenticator
   step1_hash = step1(header_hash, block_num, payload_list[1])
   computed_authenticator = compute_authenticator(step1_hash, mac_key)

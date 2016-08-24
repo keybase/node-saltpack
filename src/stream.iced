@@ -15,14 +15,14 @@ class NaClEncryptStream extends stream.ChunkStream
 
   # this function encrypts for a specific key, outputting a list object for msgpack. it gets passed in as the transform function to `node-chunk-stream`
   _encrypt : (chunk) =>
-    payload_list = payload.generate_encryption_payload_packet(@_encryptor, chunk, @_block_num, @_header_hash, @_mac_keys)
+    payload_list = payload.generate_encryption_payload_packet({payload_encryptor : @_encryptor, plaintext : chunk, block_num : @_block_num, header_hash : @_header_hash, mac_keys : @_mac_keys})
     ++@_block_num
     return payload_list
 
   # very simple wrapper over `node-chunk-stream` - on the first call, it writes a header before writing the first packet, and on all subsequent calls simply defers to `node-chunk-stream`
   _transform : (chunk, encoding, cb) ->
     if not @_header_written
-      {header_intermediate, header_hash, mac_keys, payload_key} = header.generate_encryption_header_packet(@_encryptor, @_recipients, {anonymized_recipients : @_anonymized_recipients})
+      {header_intermediate, header_hash, mac_keys, payload_key} = header.generate_encryption_header_packet({encryptor : @_encryptor, recipients : @_recipients, anonymized_recipients : @_anonymized_recipients})
       @_header_hash = header_hash
       @_mac_keys = mac_keys
       unless @_encryptor?
@@ -52,7 +52,7 @@ class NaClDecryptStream extends stream.ChunkStream
 
   # as above, this function encrypts for a specific key and is passed to `node-chunk-stream`
   _decrypt : (chunk) =>
-    payload_text = payload.parse_encryption_payload_packet(@_decryptor, chunk, @_block_num, @_header_hash, @_mac_key, @_recipient_index)
+    payload_text = payload.parse_encryption_payload_packet({payload_decryptor : @_decryptor, payload_list : chunk, block_num : @_block_num, header_hash : @_header_hash, mac_key : @_mac_key, recipient_index : @_recipient_index})
     ++@_block_num
     return payload_text
 
@@ -61,7 +61,7 @@ class NaClDecryptStream extends stream.ChunkStream
     if @_header_read
       super(chunk, encoding, cb)
     else
-      {_, header_hash, payload_key, _, mac_key, recipient_index} = header.parse_encryption_header_packet(@_decryptor, chunk)
+      {_, header_hash, payload_key, _, mac_key, recipient_index} = header.parse_encryption_header_packet({decryptor : @_decryptor, header_intermediate : chunk})
       @_header_hash = header_hash
       @_decryptor.secretKey = payload_key
       @_mac_key = mac_key

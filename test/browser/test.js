@@ -208,8 +208,9 @@
     return mac_box.slice(-crypto_auth_KEYBYTES);
   };
 
-  exports.generate_encryption_header_packet = function(encryptor, recipients, opts) {
-    var crypto_hash, ephemeral_encryptor, exposed_recipients, header_hash, header_intermediate, header_list, i, mac_keys, payload_encryptor, payload_key, rec_pair, rec_payload, rec_pubkey, recipients_list, sender_encryptor, sender_sbox, _i, _j, _len, _ref;
+  exports.generate_encryption_header_packet = function(_arg) {
+    var anonymized_recipients, crypto_hash, encryptor, ephemeral_encryptor, exposed_recipients, header_hash, header_intermediate, header_list, i, mac_keys, payload_encryptor, payload_key, rec_pair, rec_payload, rec_pubkey, recipients, recipients_list, sender_encryptor, sender_sbox, _i, _j, _len, _ref;
+    encryptor = _arg.encryptor, recipients = _arg.recipients, anonymized_recipients = _arg.anonymized_recipients;
     header_list = [];
     header_list.push('saltpack');
     header_list.push([current_major, current_minor]);
@@ -231,7 +232,10 @@
     });
     header_list.push(sender_sbox);
     recipients_list = [];
-    exposed_recipients = (opts != null ? opts.anonymized_recipients : void 0) != null ? opts.anonymized_recipients : recipients;
+    if (!(recipients.length > 0)) {
+      throw new Error("Bogus empty recipients list");
+    }
+    exposed_recipients = (anonymized_recipients != null ? anonymized_recipients.length : void 0) === recipients.length ? anonymized_recipients : recipients;
     for (i = _i = 0, _ref = recipients.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
       rec_pair = [];
       rec_pair.push(exposed_recipients[i]);
@@ -261,8 +265,9 @@
     };
   };
 
-  exports.parse_encryption_header_packet = function(decryptor, header_intermediate) {
-    var crypto_hash, ephemeral, error, format, found, header_hash, header_list, mac_key, major, minor, mode, payload_decryptor, payload_key, recipient_index, recipients, secret, sender, sender_pubkey, _i, _j, _ref, _ref1, _ref2;
+  exports.parse_encryption_header_packet = function(_arg) {
+    var crypto_hash, decryptor, ephemeral, error, format, found, header_hash, header_intermediate, header_list, mac_key, major, minor, mode, payload_decryptor, payload_key, recipient_index, recipients, secret, sender, sender_pubkey, _i, _j, _ref, _ref1, _ref2;
+    decryptor = _arg.decryptor, header_intermediate = _arg.header_intermediate;
     crypto_hash = crypto.createHash('sha512');
     crypto_hash.update(header_intermediate);
     header_hash = crypto_hash.digest();
@@ -423,8 +428,9 @@
     return step1_hash;
   };
 
-  exports.generate_encryption_payload_packet = function(payload_encryptor, plaintext, block_num, header_hash, mac_keys) {
-    var authenticator, authenticators, mac_key, payload_secretbox, step1_hash, _i, _len;
+  exports.generate_encryption_payload_packet = function(_arg) {
+    var authenticator, authenticators, block_num, header_hash, mac_key, mac_keys, payload_encryptor, payload_secretbox, plaintext, step1_hash, _i, _len;
+    payload_encryptor = _arg.payload_encryptor, plaintext = _arg.plaintext, block_num = _arg.block_num, header_hash = _arg.header_hash, mac_keys = _arg.mac_keys;
     payload_secretbox = payload_encryptor.secretbox({
       plaintext: plaintext,
       nonce: nonce.nonceForChunkSecretBox(block_num)
@@ -439,8 +445,9 @@
     return [authenticators, payload_secretbox];
   };
 
-  exports.parse_encryption_payload_packet = function(payload_decryptor, payload_list, block_num, header_hash, mac_key, recipient_index) {
-    var computed_authenticator, payload, step1_hash;
+  exports.parse_encryption_payload_packet = function(_arg) {
+    var block_num, computed_authenticator, header_hash, mac_key, payload, payload_decryptor, payload_list, recipient_index, step1_hash;
+    payload_decryptor = _arg.payload_decryptor, payload_list = _arg.payload_list, block_num = _arg.block_num, header_hash = _arg.header_hash, mac_key = _arg.mac_key, recipient_index = _arg.recipient_index;
     step1_hash = step1(header_hash, block_num, payload_list[1]);
     computed_authenticator = compute_authenticator(step1_hash, mac_key);
     if (!util.bufeq_secure(computed_authenticator, payload_list[0][recipient_index])) {
@@ -490,7 +497,13 @@
 
     NaClEncryptStream.prototype._encrypt = function(chunk) {
       var payload_list;
-      payload_list = payload.generate_encryption_payload_packet(this._encryptor, chunk, this._block_num, this._header_hash, this._mac_keys);
+      payload_list = payload.generate_encryption_payload_packet({
+        payload_encryptor: this._encryptor,
+        plaintext: chunk,
+        block_num: this._block_num,
+        header_hash: this._header_hash,
+        mac_keys: this._mac_keys
+      });
       ++this._block_num;
       return payload_list;
     };
@@ -498,7 +511,9 @@
     NaClEncryptStream.prototype._transform = function(chunk, encoding, cb) {
       var header_hash, header_intermediate, mac_keys, payload_key, _ref;
       if (!this._header_written) {
-        _ref = header.generate_encryption_header_packet(this._encryptor, this._recipients, {
+        _ref = header.generate_encryption_header_packet({
+          encryptor: this._encryptor,
+          recipients: this._recipients,
           anonymized_recipients: this._anonymized_recipients
         }), header_intermediate = _ref.header_intermediate, header_hash = _ref.header_hash, mac_keys = _ref.mac_keys, payload_key = _ref.payload_key;
         this._header_hash = header_hash;
@@ -548,7 +563,14 @@
 
     NaClDecryptStream.prototype._decrypt = function(chunk) {
       var payload_text;
-      payload_text = payload.parse_encryption_payload_packet(this._decryptor, chunk, this._block_num, this._header_hash, this._mac_key, this._recipient_index);
+      payload_text = payload.parse_encryption_payload_packet({
+        payload_decryptor: this._decryptor,
+        payload_list: chunk,
+        block_num: this._block_num,
+        header_hash: this._header_hash,
+        mac_key: this._mac_key,
+        recipient_index: this._recipient_index
+      });
       ++this._block_num;
       return payload_text;
     };
@@ -558,7 +580,10 @@
       if (this._header_read) {
         return NaClDecryptStream.__super__._transform.call(this, chunk, encoding, cb);
       } else {
-        _ref = header.parse_encryption_header_packet(this._decryptor, chunk), _ = _ref._, header_hash = _ref.header_hash, payload_key = _ref.payload_key, _ = _ref._, mac_key = _ref.mac_key, recipient_index = _ref.recipient_index;
+        _ref = header.parse_encryption_header_packet({
+          decryptor: this._decryptor,
+          header_intermediate: chunk
+        }), _ = _ref._, header_hash = _ref.header_hash, payload_key = _ref.payload_key, _ = _ref._, mac_key = _ref.mac_key, recipient_index = _ref.recipient_index;
         this._header_hash = header_hash;
         this._decryptor.secretKey = payload_key;
         this._mac_key = mac_key;
@@ -34621,7 +34646,9 @@ generate_anonymous_header = function(alice, pk) {
   for (i = _i = 0, _ref = recipients.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
     anonymized_recipients.push(null);
   }
-  return header.generate_encryption_header_packet(alice, recipients, {
+  return header.generate_encryption_header_packet({
+    encryptor: alice,
+    recipients: recipients,
     anonymized_recipients: anonymized_recipients
   });
 };
@@ -34680,7 +34707,13 @@ exports.break_mac_key_in_payload_packet = function(T, cb) {
   alice.secretKey = payload_key;
   recipient_index = header.parse_encryption_header_packet(bob, header_intermediate).recipient_index;
   plaintext = crypto.randomBytes(Math.pow(crypto.randomBytes(1)[0], 2));
-  payload_list = payload.generate_encryption_payload_packet(alice, plaintext, 0, header_hash, mac_keys);
+  payload_list = payload.generate_encryption_payload_packet({
+    encryptor: alice,
+    plaintext: plaintext,
+    block_num: 0,
+    header_hash: header_hash,
+    mac_keys: mac_keys
+  });
   _ref2 = header.parse_encryption_header_packet(bob, header_intermediate), _ = _ref2._, _ = _ref2._, _ = _ref2._, _ = _ref2._, mac_key = _ref2.mac_key, _ = _ref2._;
   mac_key[0] = ~mac_key[0];
   try {

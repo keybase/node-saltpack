@@ -19,7 +19,7 @@ compute_mac_key = (encryptor, header_hash, pubkey) ->
   # take last crypto_auth_BYTES bytes of MAC box
   return mac_box.slice(-crypto_auth_KEYBYTES)
 
-exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
+exports.generate_encryption_header_packet = ({encryptor, recipients, anonymized_recipients}) ->
   # create the header list and populate the quick stuff
   header_list = []
   header_list.push('saltpack')
@@ -42,7 +42,8 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
 
   # create the recipients list
   recipients_list = []
-  exposed_recipients = if opts?.anonymized_recipients? then opts.anonymized_recipients else recipients
+  unless recipients.length > 0 then throw new Error("Bogus empty recipients list")
+  exposed_recipients = if anonymized_recipients?.length is recipients.length then anonymized_recipients else recipients
   for i in [0...recipients.length]
     rec_pair = []
     rec_pair.push(exposed_recipients[i])
@@ -64,7 +65,7 @@ exports.generate_encryption_header_packet = (encryptor, recipients, opts) ->
 
   return {header_intermediate, header_hash, mac_keys, payload_key}
 
-exports.parse_encryption_header_packet = (decryptor, header_intermediate) ->
+exports.parse_encryption_header_packet = ({decryptor, header_intermediate}) ->
   #unpack header
   crypto_hash = crypto.createHash('sha512')
   crypto_hash.update(header_intermediate)
