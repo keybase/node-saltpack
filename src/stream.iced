@@ -104,7 +104,7 @@ exports.EncryptStream = class EncryptStream
     @last_stream = @_internals.pack_stream
     if do_armoring
       @_internals.armor_stream = new armor.stream.StreamEncoder(armor.encoding.b62.encoding)
-      @_internals.format_stream = new format.FormatStream()
+      @_internals.format_stream = new format.FormatStream({})
       @_internals.pack_stream.pipe(@_internals.armor_stream).pipe(@_internals.format_stream)
       @last_stream = @_internals.format_stream
 
@@ -128,7 +128,7 @@ exports.DecryptStream = class DecryptStream
     @_internals.unpack_stream.pipe(@_internals.nacl_stream)
     @first_stream = @_internals.unpack_stream
     if do_armoring
-      @_internals.deformat_stream = new format.DeformatStream()
+      @_internals.deformat_stream = new format.DeformatStream({})
       @_internals.dearmor_stream = new armor.stream.StreamDecoder(armor.encoding.b62.encoding)
       @_internals.deformat_stream.pipe(@_internals.dearmor_stream).pipe(@_internals.unpack_stream)
       @first_stream = @_internals.deformat_stream

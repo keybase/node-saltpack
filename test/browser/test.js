@@ -50,10 +50,11 @@
       return cb();
     };
 
-    function FormatStream(opts) {
-      var _brand;
-      if ((opts != null ? opts.brand : void 0) != null) {
-        _brand = opts.brand;
+    function FormatStream(_arg) {
+      var brand, _brand;
+      brand = _arg.brand;
+      if (brand != null) {
+        _brand = brand;
       } else {
         _brand = 'KEYBASE';
       }
@@ -106,8 +107,6 @@
             }
             this._header = _strip(header);
             this._mode = _body_mode;
-            this.block_size = 1;
-            this.exact_chunking = false;
             return _strip(after_period);
           } else {
             this._partial = Buffer.concat([this._partial, chunk]);
@@ -140,10 +139,11 @@
       }
     };
 
-    function DeformatStream(opts) {
-      var _brand;
-      if ((opts != null ? opts.brand : void 0) != null) {
-        _brand = opts.brand;
+    function DeformatStream(_arg) {
+      var brand, _brand;
+      brand = _arg.brand;
+      if (brand != null) {
+        _brand = brand;
       } else {
         _brand = 'KEYBASE';
       }
@@ -626,7 +626,7 @@
       this.last_stream = this._internals.pack_stream;
       if (do_armoring) {
         this._internals.armor_stream = new armor.stream.StreamEncoder(armor.encoding.b62.encoding);
-        this._internals.format_stream = new format.FormatStream();
+        this._internals.format_stream = new format.FormatStream({});
         this._internals.pack_stream.pipe(this._internals.armor_stream).pipe(this._internals.format_stream);
         this.last_stream = this._internals.format_stream;
       }
@@ -661,7 +661,7 @@
       this._internals.unpack_stream.pipe(this._internals.nacl_stream);
       this.first_stream = this._internals.unpack_stream;
       if (do_armoring) {
-        this._internals.deformat_stream = new format.DeformatStream();
+        this._internals.deformat_stream = new format.DeformatStream({});
         this._internals.dearmor_stream = new armor.stream.StreamDecoder(armor.encoding.b62.encoding);
         this._internals.deformat_stream.pipe(this._internals.dearmor_stream).pipe(this._internals.unpack_stream);
         this.first_stream = this._internals.deformat_stream;
@@ -34661,7 +34661,10 @@ exports.break_encryption_header_packet = function(T, cb) {
   header_list_format_broken[0] = 'satlpack';
   header_format_broken = msgpack.encode(header_list_format_broken);
   try {
-    header.parse_encryption_header_packet(bob, header_format_broken);
+    header.parse_encryption_header_packet({
+      decryptor: bob,
+      header_intermediate: header_format_broken
+    });
   } catch (_error) {
     error = _error;
     T.equal(error.message, "wrong format satlpack");
@@ -34670,7 +34673,10 @@ exports.break_encryption_header_packet = function(T, cb) {
   header_list_version_broken[1][0] = 0;
   header_version_broken = msgpack.encode(header_list_version_broken);
   try {
-    header.parse_encryption_header_packet(bob, header_version_broken);
+    header.parse_encryption_header_packet({
+      decryptor: bob,
+      header_intermediate: header_version_broken
+    });
   } catch (_error) {
     error = _error;
     T.equal(error.message, "wrong version number 0.0");
@@ -34679,7 +34685,10 @@ exports.break_encryption_header_packet = function(T, cb) {
   header_list_mode_broken[2] = 1;
   header_mode_broken = msgpack.encode(header_list_mode_broken);
   try {
-    header.parse_encryption_header_packet(bob, header_mode_broken);
+    header.parse_encryption_header_packet({
+      decryptor: bob,
+      header_intermediate: header_mode_broken
+    });
   } catch (_error) {
     error = _error;
     T.equal(error.message, "packet wasn't meant for decryption, found mode 1");
@@ -34692,7 +34701,10 @@ exports.break_recipients_list = function(T, cb) {
   _ref = util.alice_and_bob(), alice = _ref.alice, bob = _ref.bob;
   _ref1 = generate_anonymous_header(alice, crypto.randomBytes(32)), header_intermediate = _ref1.header_intermediate, header_hash = _ref1.header_hash, mac_keys = _ref1.mac_keys, payload_key = _ref1.payload_key;
   try {
-    header.parse_encryption_header_packet(bob, header_intermediate);
+    header.parse_encryption_header_packet({
+      decryptor: bob,
+      header_intermediate: header_intermediate
+    });
   } catch (_error) {
     error = _error;
     T.equal(error.message, "You are not a recipient!");
@@ -34705,19 +34717,32 @@ exports.break_mac_key_in_payload_packet = function(T, cb) {
   _ref = util.alice_and_bob(), alice = _ref.alice, bob = _ref.bob;
   _ref1 = generate_anonymous_header(alice, bob.publicKey), header_intermediate = _ref1.header_intermediate, header_hash = _ref1.header_hash, mac_keys = _ref1.mac_keys, payload_key = _ref1.payload_key;
   alice.secretKey = payload_key;
-  recipient_index = header.parse_encryption_header_packet(bob, header_intermediate).recipient_index;
+  recipient_index = header.parse_encryption_header_packet({
+    decryptor: bob,
+    header_intermediate: header_intermediate
+  }).recipient_index;
   plaintext = crypto.randomBytes(Math.pow(crypto.randomBytes(1)[0], 2));
   payload_list = payload.generate_encryption_payload_packet({
-    encryptor: alice,
+    payload_encryptor: alice,
     plaintext: plaintext,
     block_num: 0,
     header_hash: header_hash,
     mac_keys: mac_keys
   });
-  _ref2 = header.parse_encryption_header_packet(bob, header_intermediate), _ = _ref2._, _ = _ref2._, _ = _ref2._, _ = _ref2._, mac_key = _ref2.mac_key, _ = _ref2._;
+  _ref2 = header.parse_encryption_header_packet({
+    decryptor: bob,
+    header_intermediate: header_intermediate
+  }), _ = _ref2._, _ = _ref2._, _ = _ref2._, _ = _ref2._, mac_key = _ref2.mac_key, _ = _ref2._;
   mac_key[0] = ~mac_key[0];
   try {
-    payload.parse_encryption_payload_packet(bob, payload_list, 0, header_hash, mac_key, recipient_index);
+    payload.parse_encryption_payload_packet({
+      decryptor: bob,
+      payload_list: payload_list,
+      block_num: 0,
+      header_hash: header_hash,
+      mac_key: mac_key,
+      recipient_index: recipient_index
+    });
   } catch (_error) {
     error = _error;
     T.equal(error.message, "Integrity check failed!");
@@ -34755,7 +34780,9 @@ gen_header = function(opts) {
       anonymized_recipients.push(null);
     }
   }
-  packed_header = header.generate_encryption_header_packet(alice, recipients_list, {
+  packed_header = header.generate_encryption_header_packet({
+    encryptor: alice,
+    recipients: recipients_list,
     anonymized_recipients: anonymized_recipients
   });
   return {
@@ -34768,7 +34795,10 @@ gen_header = function(opts) {
 _test_header_pipeline = function(T, opts) {
   var bob, mac_key, packed_header, recipient_index, _, _ref, _ref1;
   _ref = gen_header(opts), packed_header = _ref.packed_header, _ = _ref._, bob = _ref.bob;
-  _ref1 = header.parse_encryption_header_packet(bob, packed_header.header_intermediate), mac_key = _ref1.mac_key, recipient_index = _ref1.recipient_index;
+  _ref1 = header.parse_encryption_header_packet({
+    decryptor: bob,
+    header_intermediate: packed_header.header_intermediate
+  }), mac_key = _ref1.mac_key, recipient_index = _ref1.recipient_index;
   return T.equal(packed_header.mac_keys[recipient_index], mac_key, "MAC keys didn't match: packed key = " + packed_header.mac_keys[recipient_index] + ", unpacked key = " + mac_key);
 };
 
@@ -34777,7 +34807,10 @@ exports.test_anonymous_sender = function(T, cb) {
   _ref = gen_header({
     keep_alice_anonymous: true
   }), packed_header = _ref.packed_header, _ = _ref._, bob = _ref.bob;
-  _ref1 = header.parse_encryption_header_packet(bob, packed_header.header_intermediate), _ = _ref1._, _ = _ref1._, _ = _ref1._, sender_pubkey = _ref1.sender_pubkey, _ = _ref1._, _ = _ref1._;
+  _ref1 = header.parse_encryption_header_packet({
+    decryptor: bob,
+    header_intermediate: packed_header.header_intermediate
+  }), _ = _ref1._, _ = _ref1._, _ = _ref1._, sender_pubkey = _ref1.sender_pubkey, _ = _ref1._, _ = _ref1._;
   header_list = msgpack.decode(packed_header.header_intermediate);
   T.equal(header_list[3], sender_pubkey, "Ephemeral key wasn't supplied as sender key");
   return cb();
@@ -34786,13 +34819,29 @@ exports.test_anonymous_sender = function(T, cb) {
 exports.test_payload_pipeline = function(T, cb) {
   var alice, block_num, bob, expected_payload, header_hash, header_list, mac_key, packed_header, payload_key, payload_list, plaintext, recipient_index, sender_pubkey, _ref, _ref1;
   _ref = gen_header(), packed_header = _ref.packed_header, alice = _ref.alice, bob = _ref.bob;
-  _ref1 = header.parse_encryption_header_packet(bob, packed_header.header_intermediate), header_list = _ref1.header_list, header_hash = _ref1.header_hash, payload_key = _ref1.payload_key, sender_pubkey = _ref1.sender_pubkey, mac_key = _ref1.mac_key, recipient_index = _ref1.recipient_index;
+  _ref1 = header.parse_encryption_header_packet({
+    decryptor: bob,
+    header_intermediate: packed_header.header_intermediate
+  }), header_list = _ref1.header_list, header_hash = _ref1.header_hash, payload_key = _ref1.payload_key, sender_pubkey = _ref1.sender_pubkey, mac_key = _ref1.mac_key, recipient_index = _ref1.recipient_index;
   block_num = 0;
   plaintext = crypto.randomBytes(crypto.randomBytes(1)[0]);
   alice.secretKey = payload_key;
-  payload_list = payload.generate_encryption_payload_packet(alice, plaintext, block_num, header_hash, packed_header.mac_keys);
+  payload_list = payload.generate_encryption_payload_packet({
+    payload_encryptor: alice,
+    plaintext: plaintext,
+    block_num: block_num,
+    header_hash: header_hash,
+    mac_keys: packed_header.mac_keys
+  });
   bob.secretKey = payload_key;
-  expected_payload = payload.parse_encryption_payload_packet(bob, payload_list, block_num, header_hash, mac_key, recipient_index);
+  expected_payload = payload.parse_encryption_payload_packet({
+    payload_decryptor: bob,
+    payload_list: payload_list,
+    block_num: block_num,
+    header_hash: header_hash,
+    mac_key: mac_key,
+    recipient_index: recipient_index
+  });
   T.equal(plaintext, expected_payload, "Plaintexts didn't match");
   return cb();
 };
@@ -34907,8 +34956,8 @@ exports.test_format_stream = function(T, cb) {
   ___iced_passed_deferral = iced.findDeferral(arguments);
   str = new Buffer('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');
   expected = new Buffer('BEGIN KEYBASE SALTPACK ENCRYPTED MESSAGE. kiZ8aa8yNOPC2nP QD3QM6XxeDhqkAl a8L62n0LCUdD09k W0OD4LbFMb7i26Y GYIaGDOpZaWvOqE ZRcweQTdTmTZlgD wkRICgu5i61hXKp aZR2S33yInCIzWf hk4MTSmfkXqoXEc 0tNoFOuGJuN9cLm Bl7l6DjAPsuZEfD oiDw6OsHwywZtxE sdCToPhvLSCLLvJ 7vb5yeF20g8EfuW Ul8QQtfW5n93drh z2XcHThZzhRsqV9 FfEjWxUsF1ZRFf8 4gE1jjMdhU93bh1 rus3a5IAwxma1Mc Bhv49YTqIEWeMwb 2fRjHaqbPnc90cB ZGcYFeuW0ntAO8F qJe247yrTciVAW6 0Red2sk8hQIroLT MFHhYBb4Ll3kO3R ci3WTJXt8BayZdT KmUozJ1h6BTkd7j xRgtUWykZSOlxX2 Ujr1UlHJsxnB9X0 qUa5jKg9MxQwh9u 4Kf6h7VCgze5C5X N7ZMPQot9OFE8ee MiEBOSePBUtRPoU 7kAVZwfZ07MtyxP RzgdYUQz5pQiU2U UQqPLmaHRzFTb6B bj8059QXuA4rSqr vi7e0MWaCvRSnsh ZWJE9K07hrFz3D5 vNl6RoQ6gyhFlW5 ybDiNyX0bYRch3P ZikQFMyqWF7MlOI cMOtWjD6SU1cVBp dvJMYERSPbWLEC5 tEFRt5A5XxwL9Xi JNcs4wgBXaZIUlX L5HLmwsqc2TkfZJ ejs03nWXcgMWHrK N1O1bbQeU26djEx fwSOeqO4ArDWvhl qlJy354pjC8e0nU hd3xcNpws8lHYh4 tNQ04ZOBDtdxVwS tnE207oRDI7Kbrs rQNriLImESLyH3v iCT3ZW1I0scmuGv DwUxIA3yiVryXJ6 4vf7vRnSIjtLzAl QAjWZcoCWuVwcXj p4auqPSuQwgXQ5S K9UU8KkEmmsXuix UJzkz5SsLWjUAy5 UHCwmtddO26F8Sk 5P8GH3mFKU1w47w 4jrHkJ6KIINE4Xu DnrkU3uhY9sOHXm UgQ1euYYaSpOn2b FUsy07vAHTFAPzG GNkPVGRSc91OMG0 xhaU1x3hnCYSjc8 eJzuqeI9R9ABRw0 x0tuoftAeksztI0 6kKmqVJoncjv0nP nYkoMCuvwlY8IOx zbW4oWNqYGED908 DcaygUbNezF9E7i Eu77VoXNF5j0v52 wR7XBhsrsdno3Rz VQ3w91ovggkMyaj fSdu4lbTyrftRsH oyhOOAkSDWWwT0t RfcuQAjEIVsOh5m AulcfkjAZNbpGNE YxwtAGQqqDEtDQ5 njL7oPCYiIlry0N uy0orz86FGjReU0 fAebHxlaRwgQ1Rc kpUn8Q8fSQGmHBD M4lCTZX7lrNk5J6 KA8raprFzBOBgs7 ZK648zLE7paJp3G i7xe1TvsFBIXAlJ pY5baFvXnqTJolr yuEdW1pcZyqIQlB LRjN2tZIemdqsW2 33CKwc9sb4Mu8VK l4woUo6gN2vgRco 5Kd9QzjFbUtPdmy yVxuFaTgqrAfSIg XXCLjdgGUxmkI6o pi8FXuwpr5uyfD0 UqKQFXU8UCUf9JJ Axce2kCuK1V5NOC UWxwh8P4ySi9pn1 d74XS4iAhEcPjQI vKCJfub1APeaEc2 CT3yJEkcpcqdzmO kwjAiqN43fZYHDM 3tfZXaddEdw3I3B x8YUgVDzDhyMwqf WJhyz2mADrVuDe4 GwSi7M48U43OtKd 7sNjinliXbW2lqR 4A79rOFdjaoWHcd T6uRCoIVxHKAvLB Coq1WrXC1KrDz1g mL2mBY8jJonRHLL pGE5VUGqQRRuZdT exwnKXWMYTUCmfT osFkuL5wJSWgNLn oOfOI1UVtcMOEyP tLSbc0rq0ehZcCM 581pU4VwaXMO8KY 45bUbQTpaSIzJrt 5zel3NQ1kP7Dayo yIkpxv2MqCJxfTn kWOQMSRvcfUltFG PLjP47p9Z6y6Uhv h6Vkop9HthEeyrB 3AClDoj1B7tTXvK RRV9YkoXmLKrpyH ungcp5wfpyvOMoi vMoBXBHvSpkG1Zb BdMqBvEgnVDFCQe UMp7D20eVEe5rqe PLIY7I0ZUKz8sbR AfJDI6hvJxkJjp0 KUEz3Vz1XrlpUth GjG4icGDoPnGlI0 tqyUIwnMzTGtEn3 gE9jGWIL3aGIPEn UzaHtC9EWhPYgoT HzuhU7K968mL3hv Ncmm0OK2SsIXzqw HyXxXyIBlhyygZq AaxgvnZf9nTQTrF qtKyCKhtPf0xleg qSG44dsciXBORne G42WJaM8E6ud39D OCHOdGCljoT4sZM lsOnQi7vs46HKgs hWiAKJirtzw1uK7 lBxfk4mY88XNgGo vKvCBk7A6KHHKKd TiDkUy3gxmfAeov oo4o6VIzTJoACF8 1mUEpbKIF3HiE59 KtMIOl0wKukVUq5 9KcoaBUcudL0OZX s232glM0mXro8l0 7g9ywPLOtWrbNkb J8UTQOP4Y50ZW3e QdxF3njZQlKWpXb vS9NjwyKB2dUIC9 kYePp8aYuaqpzVV RBrTKJfkd88u7Z1 jfaXZIADVVWGq9S cl1764v4Onh0jzp i7T7jSKfV4OD2ax U9giKjQMudK2YLm IUdqXVgpQB5nNZi Q13AvNJGiEvExif BtEjrRyWHOmeQxG ej2qAfpSX69Gs2r XKetqqCKG5f5V21 hQ4NlhqEicLo2IT zkxS7uLVgbeKSHE 4VUXOIULo. END KEYBASE SALTPACK ENCRYPTED MESSAGE.');
-  fs = new format.FormatStream();
-  ds = new format.DeformatStream();
+  fs = new format.FormatStream({});
+  ds = new format.DeformatStream({});
   stb = new util.StreamToBuffer();
   fs.pipe(ds).pipe(stb);
   (function(_this) {

@@ -45,8 +45,8 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
     @push(Buffer.concat([punctuation, space, @_footer, punctuation]))
     cb()
 
-  constructor : (opts) ->
-    if opts?.brand? then _brand = opts.brand else _brand = 'KEYBASE'
+  constructor : ({brand}) ->
+    if brand? then _brand = brand else _brand = 'KEYBASE'
     @_header = new Buffer("BEGIN#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_footer = new Buffer("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_header_written = false
@@ -76,8 +76,6 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
           unless re.test(header) then throw new Error("Header failed to verify!")
           @_header = _strip(header)
           @_mode = _body_mode
-          @block_size = 1
-          @exact_chunking = false
           return _strip(after_period)
         else
           @_partial = Buffer.concat([@_partial, chunk])
@@ -108,8 +106,8 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
           @_partial = Buffer.concat([@_partial, chunk])
           return new Buffer('')
 
-  constructor : (opts) ->
-    if opts?.brand? then _brand = opts.brand else _brand = 'KEYBASE'
+  constructor : ({brand}) ->
+    if brand? then _brand = brand else _brand = 'KEYBASE'
     @_header = new Buffer('')
     @_mode = _header_mode
     @_partial = new Buffer('')
