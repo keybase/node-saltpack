@@ -1,10 +1,11 @@
 crypto = require('crypto')
 saltpack = require('../..')
+vectors = require('../vectors')
 format = saltpack.lowlevel.format
 stream = saltpack.stream
 util = saltpack.lowlevel.util
 
-msg_length = util.random_megabyte_to_ten()/4
+msg_length = (1024**2)*2
 
 _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
   {alice, bob} = util.alice_and_bob()
@@ -44,12 +45,30 @@ exports.test_format_stream = (T, cb) ->
   T.equal(str, stb.getBuffer(), "Incorrect formatting or deformatting: #{stb.getBuffer()}")
   cb()
 
+exports.test_short_single_block = (T, cb) ->
+  vec = vectors.valid.short_single_block
+  str = vec.input
+  ds = new format.DeformatStream({})
+  stb = new util.StreamToBuffer()
+  ds.pipe(stb)
+  await ds.write(str, defer())
+  await
+    stb.on('finish', defer())
+    ds.end()
+  T.equal(stb.getBuffer().toString(), vec.output.toString(), "We shouldn't get here...")
+
 exports.test_saltpack_with_armor = (T, cb) ->
+  start = new Date().getTime()
   await _test_saltpack_pipeline(true, false, T, defer())
+  end = new Date().getTime()
+  console.log(end - start)
   cb()
 
 exports.test_saltpack_without_armor = (T, cb) ->
+  start = new Date().getTime()
   await _test_saltpack_pipeline(false, false, T, defer())
+  end = new Date().getTime()
+  console.log(end - start)
   cb()
 
 exports.test_anonymous_recipients = (T, cb) ->

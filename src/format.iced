@@ -38,6 +38,7 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
     else
       # ditto
       res = Buffer.concat([res, chunk, newline])
+      @_word_count = 0
     return res
 
   _flush : (cb) ->
@@ -51,7 +52,7 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
     @_footer = new Buffer("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_header_written = false
     @_word_count = 0
-    super({transform_func : @_format, block_size : 15, exact_chunking : true, writableObjectMode : false, readableObjectMode : false})
+    super({transform_func : @_format, block_size : chars_per_word, exact_chunking : true, writableObjectMode : false, readableObjectMode : false})
 
 exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
@@ -99,8 +100,8 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
       when _footer_mode
         index = chunk.indexOf(punctuation[0])
         if index > 0
-          footer = Buffer.concat([@_partial, _strip(chunk)])
-          unless _strip(footer) is @_header[6...] then throw new Error("Footer failed to verify!")
+          footer = Buffer.concat([@_partial, chunk])
+          unless _strip(footer) is Buffer.concat([new Buffer('END'), _strip(@_header[6...])]) then throw new Error("Footer failed to verify!")
           return new Buffer('')
         else
           @_partial = Buffer.concat([@_partial, chunk])
@@ -111,4 +112,4 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
     @_header = new Buffer('')
     @_mode = _header_mode
     @_partial = new Buffer('')
-    super({transform_func : @_deformat, block_size : 1, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
+    super({transform_func : @_deformat, block_size : 2048, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
