@@ -74,7 +74,9 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
           # clear this buffer out to be reused by the footer
           @_partial = new Buffer('')
           re = /[>\n\r\t ]*BEGIN[>\n\r\t ]+([a-zA-Z0-9]+)?[>\n\r\t ]+SALTPACK[>\n\r\t ]+(ENCRYPTED[>\n\r\t ]+MESSAGE)|(SIGNED[>\n\r\t ]+MESSAGE)|(DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*/
-          unless re.test(header) then throw new Error("Header failed to verify!")
+          unless re.test(header)
+            console.log("HEADER #{header}")
+            throw new Error("Header failed to verify!")
           @_header = _strip(header)
           @_mode = _body_mode
           return _strip(after_period)

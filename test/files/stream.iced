@@ -25,11 +25,21 @@ _test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
   await
     stb.on('finish', defer())
     es.end(() ->)
-
   out = stb.getBuffer()
   T.equal(data.length, out.length, 'Truncation or garbage bytes')
   T.equal(data, out, 'Plaintext mismatch')
   cb()
+
+_test_deformatter = (T, test_case) ->
+  str = test_case.input
+  ds = new format.DeformatStream({})
+  stb = new util.StreamToBuffer()
+  ds.pipe(stb)
+  await ds.write(new Buffer(str), defer())
+  await
+    stb.on('finish', defer())
+    ds.end()
+  T.equal(stb.getBuffer().toString(), test_case.output, "Vector #{test_case.name} failed")
 
 exports.test_format_stream = (T, cb) ->
   str = new Buffer('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')
@@ -46,16 +56,15 @@ exports.test_format_stream = (T, cb) ->
   cb()
 
 exports.test_short_single_block = (T, cb) ->
-  vec = vectors.valid.short_single_block
-  str = vec.input
-  ds = new format.DeformatStream({})
-  stb = new util.StreamToBuffer()
-  ds.pipe(stb)
-  await ds.write(str, defer())
-  await
-    stb.on('finish', defer())
-    ds.end()
-  T.equal(stb.getBuffer().toString(), vec.output.toString(), "We shouldn't get here...")
+  test_case = vectors.valid.short_single_block
+  _test_deformatter(T, test_case)
+  cb()
+
+# TODO: After error refactoring, fix this
+exports.test_dog_end = (T, cb) ->
+  test_case = vectors.invalid.footer_without_end
+  _test_deformatter(T, test_case)
+  cb()
 
 exports.test_saltpack_with_armor = (T, cb) ->
   start = new Date().getTime()
