@@ -10,7 +10,9 @@
   },
   "license": "BSD-3-Clause",
   "dependencies": {
+    "iced-error": "0.0.9",
     "iced-runtime": "^1.0.3",
+    "iced-test": "0.0.22",
     "istanbul": "^0.4.5",
     "keybase-chunk-stream": "^0.1.8",
     "keybase-msgpack-lite": "^0.1.25",

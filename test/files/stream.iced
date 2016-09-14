@@ -1,45 +1,74 @@
 crypto = require('crypto')
 saltpack = require('../..')
-vectors = require('../vectors')
+{make_esc} = require('iced-error')
 format = saltpack.lowlevel.format
 stream = saltpack.stream
 util = saltpack.lowlevel.util
+vectors = util.vectors
 
 msg_length = (1024**2)*2
 
-_test_saltpack_pipeline = (do_armoring, anon_recips, T, cb) ->
+_test_saltpack_pipeline = (T, {do_armoring, anon_recips}, cb) ->
+  esc = make_esc(cb, "_test_saltpack_pipeline")
   {alice, bob} = util.alice_and_bob()
   recipients_list = util.gen_recipients(bob.publicKey)
   if anon_recips
     anonymized_recipients = []
     anonymized_recipients.push(null) for [0...recipients_list.length]
-    es = new stream.EncryptStream({encryptor : alice, do_armoring, recipients : recipients_list, anonymized_recipients})
+    es = new stream.EncryptStream({encryptor: alice, do_armoring, recipients: recipients_list, anonymized_recipients})
   else
-    es = new stream.EncryptStream({encryptor : alice, do_armoring, recipients : recipients_list})
-  ds = new stream.DecryptStream({decryptor : bob, do_armoring})
+    es = new stream.EncryptStream({encryptor: alice, do_armoring, recipients: recipients_list})
+  ds = new stream.DecryptStream({decryptor: bob, do_armoring})
   stb = new util.StreamToBuffer()
-  es.pipe(ds.first_stream)
+  es.pipe(ds)
   ds.pipe(stb)
 
+  es.on('error', (err) -> return cb(err))
   await util.stream_random_data(es, msg_length, defer(data))
   await
-    stb.on('finish', defer())
-    es.end(() ->)
+    stb.on('finish', defer(end_err))
+    es.end(esc(defer()))
+  if end_err?
+    return cb(end_err)
   out = stb.getBuffer()
   T.equal(data.length, out.length, 'Truncation or garbage bytes')
   T.equal(data, out, 'Plaintext mismatch')
   cb()
 
-_test_deformatter = (T, test_case) ->
+_test_decryptor = (T, test_case, cb) ->
+  esc = make_esc(cb, "Vector #{test_case.name} failed")
+  {alice} = util.alice_and_bob()
+  alice.secretKey = new Buffer('0000000000000000000000000000000000000000000000000000000000000000', 'hex')
+  ds = new stream.DecryptStream({decryptor: alice, do_armoring: true})
+  stb = new util.StreamToBuffer()
+  ds.on('error', cb)
+  ds.pipe(stb)
+  await ds.write(test_case.input, esc(defer()))
+  console.log('post-write')
+  await
+    ds.on('finish', defer(err))
+    ds.end(esc(defer()))
+  if err? then return cb(err)
+  console.log('post-end')
+  out = stb.getBuffer()
+  T.equal(test_case.output.length, out.length, 'Truncation or garbage bytes')
+  T.equal(test_case.output, out, 'Plaintext mismatch')
+  cb()
+
+_test_deformatter = (T, test_case, cb) ->
+  esc = make_esc(cb, "Vector #{test_case.name} failed")
   str = test_case.input
   ds = new format.DeformatStream({})
   stb = new util.StreamToBuffer()
   ds.pipe(stb)
-  await ds.write(new Buffer(str), defer())
+
+  ds.on('error', (err) -> return cb(err))
+  await ds.write(new Buffer(str), esc(defer()))
   await
-    stb.on('finish', defer())
-    ds.end()
+    stb.on('finish', defer(end_err))
+    ds.end(esc(defer()))
   T.equal(stb.getBuffer().toString(), test_case.output, "Vector #{test_case.name} failed")
+  cb(null)
 
 exports.test_format_stream = (T, cb) ->
   str = new Buffer('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')
@@ -52,36 +81,47 @@ exports.test_format_stream = (T, cb) ->
   await
     stb.on('finish', defer())
     fs.end()
-  T.equal(str, stb.getBuffer(), "Incorrect formatting or deformatting: #{stb.getBuffer()}")
+  T.equal(str, stb.getBuffer(), "Incorrect formatting or deformatting")
   cb()
 
 exports.test_short_single_block = (T, cb) ->
   test_case = vectors.valid.short_single_block
-  _test_deformatter(T, test_case)
+  await _test_deformatter(T, test_case, defer(err))
+  if err? then throw err
   cb()
 
-# TODO: After error refactoring, fix this
 exports.test_dog_end = (T, cb) ->
   test_case = vectors.invalid.footer_without_end
-  _test_deformatter(T, test_case)
+  await _test_deformatter(T, test_case, defer(err))
+  T.equal(err.message, "Footer failed to verify! DOGKEYBASESALTPACKENCRYPTEDMESSAGE != ENDKEYBASESALTPACKENCRYPTEDMESSAGE")
+  cb()
+
+exports.test_truncation = (T, cb) ->
+  test_case = vectors.invalid.truncated_ending_packet
+  console.log('pre-await')
+  await _test_decryptor(T, test_case, defer(err))
+  T.equal(err.message, test_case.error)
   cb()
 
 exports.test_saltpack_with_armor = (T, cb) ->
   start = new Date().getTime()
-  await _test_saltpack_pipeline(true, false, T, defer())
+  await _test_saltpack_pipeline(T, {do_armoring: true, anon_recips: false}, defer())
   end = new Date().getTime()
-  console.log(end - start)
+  console.log("Time: #{end-start}")
   cb()
 
 exports.test_saltpack_without_armor = (T, cb) ->
   start = new Date().getTime()
-  await _test_saltpack_pipeline(false, false, T, defer())
+  await _test_saltpack_pipeline(T, {do_armoring: false, anon_recips: false}, defer())
   end = new Date().getTime()
-  console.log(end - start)
+  console.log("Time: #{end-start}")
   cb()
 
 exports.test_anonymous_recipients = (T, cb) ->
-  await _test_saltpack_pipeline(false, true, T, defer())
+  start = new Date().getTime()
+  await _test_saltpack_pipeline(T, {do_armoring: false, anon_recips: false}, defer())
+  end = new Date().getTime()
+  console.log("Time: #{end-start}")
   cb()
 
 exports.test_real_saltpack = (T, cb) ->
@@ -100,7 +140,7 @@ exports.test_real_saltpack = (T, cb) ->
     new Buffer('5da375c0018da143c001fe426e39dde28f85d99d16a7d30b46dd235f4f6f5b59', 'hex'),
     new Buffer('ddc0f890b224bc698e4f843b046b1eeaf3455504b434837424bcb63132bec40c', 'hex'),
     new Buffer('d65361e0d119422d7fa2d461b1eb460fcf9e3d0ed864b5b06639526b787e3c3b', 'hex')]
-  es = new stream.EncryptStream({encryptor : null, do_armoring : true, recipients : people_keys})
+  es = new stream.EncryptStream({encryptor: null, do_armoring: true, recipients: people_keys})
   stb = new util.StreamToBuffer()
   es.pipe(stb)
   message = new Buffer("For millions of years flowers have been producing thorns. For millions of years sheep have been eating them all the same. And it's not serious, trying to understand why flowers go to such trouble to produce thorns that are good for nothing? It's not important, the war between the sheep and the flowers? It's no more serious and more important than the numbers that fat red gentleman is adding up? Suppose I happen to know a unique flower, one that exists nowhere in the world except on my planet, one that a little sheep can wipe out in a single bite one morning, just like that, without even realizing what he'd doing - that isn't important? If someone loves a flower of which just one example exists among all the millions and millions of stars, that's enough to make him happy when he looks at the stars. He tells himself 'My flower's up there somewhere...' But if the sheep eats the flower, then for him it's as if, suddenly, all the stars went out. And that isn't important?\n")

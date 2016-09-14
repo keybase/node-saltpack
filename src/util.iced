@@ -2,6 +2,9 @@ stream = require('stream')
 crypto = require('crypto')
 nacl = require('keybase-nacl')
 
+# test vectors
+exports.vectors = require('./vectors')
+
 # Constant-time buffer comparison
 exports.bufeq_secure = (x,y) ->
   ret = if not x? and not y? then true

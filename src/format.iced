@@ -20,10 +20,10 @@ noop = () ->
 exports.FormatStream = class FormatStream extends stream.ChunkStream
 
   # _format is the transform function passed to the chunk stream constructor
-  _format : (chunk) ->
+  _format : (chunk, cb) ->
     # this is only ever called during flush()
     if chunk.length < @block_size
-      return chunk
+      return cb(null, chunk)
 
     # write out the header if we haven't already
     res = new Buffer('')
@@ -39,12 +39,11 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
       # ditto
       res = Buffer.concat([res, chunk, newline])
       @_word_count = 0
-    return res
 
-  _flush : (cb) ->
-    super(noop)
-    @push(Buffer.concat([punctuation, space, @_footer, punctuation]))
-    cb()
+    return cb(null, res)
+
+  flush_append : (cb) ->
+    return cb(null, Buffer.concat([punctuation, space, @_footer, punctuation]))
 
   constructor : ({brand}) ->
     if brand? then _brand = brand else _brand = 'KEYBASE'
@@ -63,55 +62,54 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
   _strip = (chunk) -> chunk = new Buffer(chunk.toString().replace(_strip_re, ""))
 
-  _deformat : (chunk) ->
-   switch @_mode
-      # verify the header, and print out any body that we may have gotten with it
-      when _header_mode
-        index = chunk.indexOf(punctuation[0])
-        if index > 0
-          after_period = chunk[index+1...]
-          header = Buffer.concat([@_partial, chunk[0...index]])
-          # clear this buffer out to be reused by the footer
-          @_partial = new Buffer('')
-          re = /[>\n\r\t ]*BEGIN[>\n\r\t ]+([a-zA-Z0-9]+)?[>\n\r\t ]+SALTPACK[>\n\r\t ]+(ENCRYPTED[>\n\r\t ]+MESSAGE)|(SIGNED[>\n\r\t ]+MESSAGE)|(DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*/
-          unless re.test(header)
-            console.log("HEADER #{header}")
-            throw new Error("Header failed to verify!")
-          @_header = _strip(header)
-          @_mode = _body_mode
-          return _strip(after_period)
-        else
-          @_partial = Buffer.concat([@_partial, chunk])
-          return new Buffer('')
+  _deformat : (chunk, cb) ->
+    chunk = Buffer.concat([@_partial, chunk])
+    @_partial = new Buffer('')
+    if @_mode is _header_mode
+      index = chunk.indexOf(punctuation[0])
+      if index isnt -1
+        # then we have a full header, verify it
+        re = /[>\n\r\t ]*BEGIN[>\n\r\t ]+([a-zA-Z0-9]+)?[>\n\r\t ]+SALTPACK[>\n\r\t ]+(ENCRYPTED[>\n\r\t ]+MESSAGE)|(SIGNED[>\n\r\t ]+MESSAGE)|(DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*/
+        @_header = chunk[...index]
+        unless re.test(@_header) then return cb(new Error("Header failed to verify!"), null)
+        chunk = chunk[index + punctuation.length...]
+        @_mode = _body_mode
+      else
+        # then we have a partial header, store it and wait for the next write
+        @_partial = chunk
+        return cb(null, null)
 
-      # strip the body and print it out
-      when _body_mode
-        index = chunk.indexOf(punctuation[0])
-        if index is -1
-          # we're just in a normal body chunk
-          # everything is fine
-          return _strip(chunk)
-        else
-          # we found the end!
-          ret = _strip(chunk[...index])
-          # store any partial footer
-          @_partial = chunk[index+punctuation.length+space.length...]
-          @_mode = _footer_mode
-          return ret
+    if @_mode is _body_mode
+      index = chunk.indexOf(punctuation[0])
+      if index is -1
+        # chunk is only body bytes
+        return cb(null, _strip(chunk))
+      else
+        # chunk has some footer bytes
+        @push(_strip(chunk[...index]))
+        chunk = chunk[index + punctuation.length...]
+        @_mode = _footer_mode
 
-      when _footer_mode
-        index = chunk.indexOf(punctuation[0])
-        if index > 0
-          footer = Buffer.concat([@_partial, chunk])
-          unless _strip(footer) is Buffer.concat([new Buffer('END'), _strip(@_header[6...])]) then throw new Error("Footer failed to verify!")
-          return new Buffer('')
-        else
-          @_partial = Buffer.concat([@_partial, chunk])
-          return new Buffer('')
+    if @_mode is _footer_mode
+      index = chunk.indexOf(punctuation[0])
+      if index isnt -1
+        # we have a full footer, verify it
+        footer = chunk[...index]
+        re = /[>\n\r\t ]*END[>\n\r\t ]+([a-zA-Z0-9]+)?[>\n\r\t ]+SALTPACK[>\n\r\t ]+(ENCRYPTED[>\n\r\t ]+MESSAGE)|(SIGNED[>\n\r\t ]+MESSAGE)|(DETACHED[>\n\r\t ]+SIGNATURE)[>\n\r\t ]*/
+        expected_footer = Buffer.concat([new Buffer('END'), _strip(@_header)[5...]])
+        unless re.test(footer) and util.bufeq_secure(_strip(footer), expected_footer)
+          return cb(new Error("Footer failed to verify! #{_strip(footer)} != #{expected_footer}"), null)
+        @_mode = -1
+        return cb(null, null)
+      else
+        # we only have a partial footer
+        @_partial = chunk
+
+    if @_mode is -1
+      return cb(null, null)
 
   constructor : ({brand}) ->
-    if brand? then _brand = brand else _brand = 'KEYBASE'
-    @_header = new Buffer('')
+    @_header = null
     @_mode = _header_mode
     @_partial = new Buffer('')
     super({transform_func : @_deformat, block_size : 2048, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
