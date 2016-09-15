@@ -20,7 +20,11 @@ var alice, bob;
 
 //to specify anonymous recipients, simply add an "anonymized_recipients" argument
 //to the dict, with "null" in place of a public key for each recipient you want to hide.
-var es = new saltpack.stream.EncryptStream({encryptor: alice, do_armoring: true, recipients: [bob.publicKey]})
+var es = new saltpack.stream.EncryptStream({
+	encryptor: alice,
+	do_armoring: true,
+	recipients: [bob.publicKey]
+})
 var ds = new saltpack.stream.DecryptStream({decryptor: bob, do_armoring: true})
 
 //register error listeners
