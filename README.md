@@ -26,7 +26,7 @@ ds.on('error', (err) -> throw err)
 
 //encrypt from stdin, write to a file
 var fs = require("fs");
-var encrypted_file = fs.createWriteStream("/path/to/file");
+var file = fs.createWriteStream("/path/to/file");
 process.stdin.pipe(es);
 //currently, it's not possible to chain pipe calls with {Encrypt,Decrypt}Streams, i.e. process.stdin.pipe(es).pipe(file) - this change may come down the line, but for now we just have to use the extra line.
 es.pipe(file);
