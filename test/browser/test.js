@@ -4396,9 +4396,44 @@ arguments[4][12][0].apply(exports,arguments)
           };
         })(this));
       }
+      this.first_stream.on('drain', (function(_this) {
+        return function() {
+          return _this.emit('drain');
+        };
+      })(this));
+      this.first_stream.on('pipe', (function(_this) {
+        return function(src) {
+          return _this.emit('pipe', src);
+        };
+      })(this));
+      this.first_stream.on('unpipe', (function(_this) {
+        return function(src) {
+          return _this.emit('unpipe', src);
+        };
+      })(this));
+      this.last_stream.on('close', (function(_this) {
+        return function() {
+          return _this.emit('close');
+        };
+      })(this));
+      this.last_stream.on('data', (function(_this) {
+        return function(chunk) {
+          return _this.emit('data', chunk);
+        };
+      })(this));
+      this.last_stream.on('end', (function(_this) {
+        return function() {
+          return _this.emit('end');
+        };
+      })(this));
       this.last_stream.on('finish', (function(_this) {
         return function() {
           return _this.emit('finish');
+        };
+      })(this));
+      this.last_stream.on('readable', (function(_this) {
+        return function() {
+          return _this.emit('readable');
         };
       })(this));
     }
@@ -35389,7 +35424,7 @@ util = saltpack.lowlevel.util;
 
 vectors = util.vectors;
 
-msg_length = (Math.pow(1024, 2)) * 2;
+msg_length = (Math.pow(1024, 2)) / 2;
 
 _test_stream = function(T, _arg, cb) {
   var err, input, stb, stream, test_case, ___iced_passed_deferral, __iced_deferrals, __iced_k;
@@ -35606,7 +35641,6 @@ exports.test_truncation = function(T, cb) {
   test_case = vectors.invalid.truncated_ending_packet;
   alice = util.alice_and_bob().alice;
   alice.secretKey = new Buffer('0000000000000000000000000000000000000000000000000000000000000000', 'hex');
-  console.log('pre-truncation');
   (function(_this) {
     return (function(__iced_k) {
       __iced_deferrals = new iced.Deferrals(__iced_k, {
@@ -35626,13 +35660,12 @@ exports.test_truncation = function(T, cb) {
             return __iced_deferrals.ret = arguments[1];
           };
         })(),
-        lineno: 84
+        lineno: 83
       }));
       __iced_deferrals._fulfill();
     });
   })(this)((function(_this) {
     return function() {
-      console.log('post-truncation');
       T.equal(err.message, test_case.error, "Vector " + test_case.name + " failed");
       return cb();
     };
@@ -35654,7 +35687,7 @@ exports.test_saltpack_with_armor = function(T, cb) {
         do_armoring: true,
         anon_recips: false
       }, __iced_deferrals.defer({
-        lineno: 91
+        lineno: 89
       }));
       __iced_deferrals._fulfill();
     });
@@ -35682,7 +35715,7 @@ exports.test_saltpack_without_armor = function(T, cb) {
         do_armoring: false,
         anon_recips: false
       }, __iced_deferrals.defer({
-        lineno: 98
+        lineno: 96
       }));
       __iced_deferrals._fulfill();
     });
@@ -35710,7 +35743,7 @@ exports.test_anonymous_recipients = function(T, cb) {
         do_armoring: false,
         anon_recips: false
       }, __iced_deferrals.defer({
-        lineno: 105
+        lineno: 103
       }));
       __iced_deferrals._fulfill();
     });
@@ -35724,7 +35757,7 @@ exports.test_anonymous_recipients = function(T, cb) {
 };
 
 exports.test_real_saltpack = function(T, cb) {
-  var err, es, people_keys, stb, test_case, ___iced_passed_deferral, __iced_deferrals, __iced_k;
+  var es, people_keys, stb, test_case, ___iced_passed_deferral, __iced_deferrals, __iced_k;
   __iced_k = __iced_k_noop;
   ___iced_passed_deferral = iced.findDeferral(arguments);
   test_case = vectors.valid.real_saltpack;
@@ -35736,42 +35769,24 @@ exports.test_real_saltpack = function(T, cb) {
   });
   stb = new util.StreamToBuffer();
   es.pipe(stb);
+  es.write(test_case.input);
   (function(_this) {
     return (function(__iced_k) {
       __iced_deferrals = new iced.Deferrals(__iced_k, {
         parent: ___iced_passed_deferral,
         funcname: "test_real_saltpack"
       });
-      es.write(test_case.input, __iced_deferrals.defer({
-        assign_fn: (function() {
-          return function() {
-            return err = arguments[0];
-          };
-        })(),
+      stb.on('finish', __iced_deferrals.defer({
         lineno: 130
       }));
+      es.end();
       __iced_deferrals._fulfill();
     });
   })(this)((function(_this) {
     return function() {
-      if (err) {
-        throw err;
-      }
-      (function(__iced_k) {
-        __iced_deferrals = new iced.Deferrals(__iced_k, {
-          parent: ___iced_passed_deferral,
-          funcname: "test_real_saltpack"
-        });
-        stb.on('end', __iced_deferrals.defer({
-          lineno: 133
-        }));
-        es.end();
-        __iced_deferrals._fulfill();
-      })(function() {
-        console.log('Send the following to Patrick, Jack, Mark, Max Krohn, Chris Coyne, or Chris Ball:');
-        console.log(stb.getBuffer().toString());
-        return cb();
-      });
+      console.log('Send the following to Patrick, Jack, Mark, Max Krohn, Chris Coyne, or Chris Ball:');
+      console.log(stb.getBuffer().toString());
+      return cb();
     };
   })(this));
 };

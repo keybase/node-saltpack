@@ -145,8 +145,17 @@ class StreamWrapper extends EventEmitter
     for stream in streams
       stream.on('error', (err) => @emit('error', err))
 
-    # attach end listener to last stream
+    # attach listeners to writable side
+    @first_stream.on('drain', () => @emit('drain'))
+    @first_stream.on('pipe', (src) => @emit('pipe', src))
+    @first_stream.on('unpipe', (src) => @emit('unpipe', src))
+
+    # attach listeners to readable side
+    @last_stream.on('close', () => @emit('close'))
+    @last_stream.on('data', (chunk) => @emit('data', chunk))
+    @last_stream.on('end', () => @emit('end'))
     @last_stream.on('finish', () => @emit('finish'))
+    @last_stream.on('readable', () => @emit('readable'))
 
   write : (chunk) ->
     @first_stream.write(chunk)
