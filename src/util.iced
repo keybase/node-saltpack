@@ -52,9 +52,7 @@ exports.stream_random_data = (strm, len, cb) ->
     expected_results.push(buf)
 
     # write the buffer
-    await strm.write(buf, defer(err))
-    if err then throw err
-
+    strm.write(buf)
   cb(Buffer.concat(expected_results))
 
 exports.random_megabyte_to_ten = () -> Math.floor((1024**2)*(Math.random()*9)+1)

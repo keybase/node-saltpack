@@ -143,21 +143,20 @@ class StreamWrapper extends EventEmitter
 
     # attach error listeners to each stream
     for stream in streams
-      stream.on('error', (err) -> @emit(err))
+      stream.on('error', (err) => @emit('error', err))
 
-  write : (chunk, cb) ->
-    await @first_stream.write(chunk, defer())
-    cb?()
+    # attach end listener to last stream
+    @last_stream.on('finish', () => @emit('finish'))
 
-  pipe : (dest, cb) ->
-    await @last_stream.pipe(dest, defer())
-    cb?()
+  write : (chunk) ->
+    @first_stream.write(chunk)
+
+  pipe : (dest) ->
+    @last_stream.pipe(dest)
     return dest
 
-  end : (cb) ->
-    esc = make_esc(cb, "StreamWrapper::end")
-    await @first_stream.end(esc(defer()))
-    cb?()
+  end : () ->
+    @first_stream.end()
 
 exports.EncryptStream = class EncryptStream extends StreamWrapper
   constructor : ({encryptor, do_armoring, recipients, anonymized_recipients}) ->
