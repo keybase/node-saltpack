@@ -40,10 +40,10 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
       res = Buffer.concat([res, chunk, newline])
       @_word_count = 0
 
-    return cb(null, res)
+    cb(null, res)
 
   flush_append : (cb) ->
-    return cb(null, Buffer.concat([punctuation, space, @_footer, punctuation]))
+    cb(null, Buffer.concat([punctuation, space, @_footer, punctuation]))
 
   constructor : ({brand}) ->
     if brand? then _brand = brand else _brand = 'KEYBASE'
@@ -51,7 +51,7 @@ exports.FormatStream = class FormatStream extends stream.ChunkStream
     @_footer = new Buffer("END#{space}#{_brand}#{space}SALTPACK#{space}ENCRYPTED#{space}MESSAGE")
     @_header_written = false
     @_word_count = 0
-    super({transform_func : @_format, block_size : chars_per_word, exact_chunking : true, writableObjectMode : false, readableObjectMode : false})
+    super({transform_func : @_format, block_size : chars_per_word, readableObjectMode : false})
 
 exports.DeformatStream = class DeformatStream extends stream.ChunkStream
 
@@ -112,4 +112,4 @@ exports.DeformatStream = class DeformatStream extends stream.ChunkStream
     @_header = null
     @_mode = _header_mode
     @_partial = new Buffer('')
-    super({transform_func : @_deformat, block_size : 2048, exact_chunking : false, writableObjectMode : false, readableObjectMode : false})
+    super({transform_func : @_deformat, block_size : 2048, readableObjectMode : false})

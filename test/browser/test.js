@@ -3452,8 +3452,6 @@ arguments[4][12][0].apply(exports,arguments)
       FormatStream.__super__.constructor.call(this, {
         transform_func: this._format,
         block_size: chars_per_word,
-        exact_chunking: true,
-        writableObjectMode: false,
         readableObjectMode: false
       });
     }
@@ -3537,8 +3535,6 @@ arguments[4][12][0].apply(exports,arguments)
       DeformatStream.__super__.constructor.call(this, {
         transform_func: this._deformat,
         block_size: 2048,
-        exact_chunking: false,
-        writableObjectMode: false,
         readableObjectMode: false
       });
     }
@@ -3590,11 +3586,15 @@ arguments[4][12][0].apply(exports,arguments)
     encryptor = _arg.encryptor, header_hash = _arg.header_hash, pubkey = _arg.pubkey;
     zero_bytes = new Buffer(crypto_auth_KEYBYTES);
     zero_bytes.fill(0);
-    mac_box = encryptor.encrypt({
-      plaintext: zero_bytes,
-      nonce: nonce.nonceForMACKeyBox(header_hash),
-      pubkey: pubkey
-    });
+    try {
+      mac_box = encryptor.encrypt({
+        plaintext: zero_bytes,
+        nonce: nonce.nonceForMACKeyBox(header_hash),
+        pubkey: pubkey
+      });
+    } catch (_error) {
+      return cb(new Error("Failed to generate MAC keys"), null);
+    }
     return cb(null, mac_box.slice(-crypto_auth_KEYBYTES));
   };
 
@@ -3626,7 +3626,7 @@ arguments[4][12][0].apply(exports,arguments)
     header_list.push(sender_sbox);
     recipients_list = [];
     if (!(recipients.length > 0)) {
-      return cb(Error("Bogus empty recipients list"), null);
+      return cb(new Error("Bogus empty recipients list"), null);
     }
     exposed_recipients = (anonymized_recipients != null ? anonymized_recipients.length : void 0) === recipients.length ? anonymized_recipients : recipients;
     for (i = _i = 0, _ref = recipients.length; 0 <= _ref ? _i < _ref : _i > _ref; i = 0 <= _ref ? ++_i : --_i) {
@@ -3688,7 +3688,7 @@ arguments[4][12][0].apply(exports,arguments)
                     return __slot_1[__slot_2] = arguments[0];
                   };
                 })(mac_keys, i),
-                lineno: 66
+                lineno: 69
               })));
               __iced_deferrals._fulfill();
             })(_next);
@@ -3720,13 +3720,13 @@ arguments[4][12][0].apply(exports,arguments)
     header_list = msgpack.decode(header_intermediate);
     format = header_list[0], (_ref = header_list[1], major = _ref[0], minor = _ref[1]), mode = header_list[2], ephemeral = header_list[3], sender = header_list[4], recipients = header_list[5];
     if (format !== 'saltpack') {
-      return cb(Error("wrong format " + format), null);
+      return cb(new Error("wrong format " + format), null);
     }
     if (major !== current_major) {
-      return cb(Error("wrong version number " + major + "." + minor), null);
+      return cb(new Error("wrong version number " + major + "." + minor), null);
     }
     if (mode !== encryption_mode) {
-      return cb(Error("packet wasn't meant for decryption, found mode " + mode), null);
+      return cb(new Error("packet wasn't meant for decryption, found mode " + mode), null);
     }
     secret = decryptor.box_beforenm({
       pubkey: ephemeral,
@@ -3769,7 +3769,7 @@ arguments[4][12][0].apply(exports,arguments)
       }
     }
     if (payload_key == null) {
-      return cb(Error('You are not a recipient!'), null);
+      return cb(new Error('You are not a recipient!'), null);
     }
     payload_decryptor = nacl.alloc({
       force_js: false
@@ -3796,7 +3796,7 @@ arguments[4][12][0].apply(exports,arguments)
               return mac_key = arguments[0];
             };
           })(),
-          lineno: 118
+          lineno: 121
         })));
         __iced_deferrals._fulfill();
       });
@@ -3899,7 +3899,7 @@ arguments[4][12][0].apply(exports,arguments)
   };
 
   step1 = function(_arg, cb) {
-    var block_num, crypto_hash, header_hash, payload_secretbox, step1_cat, step1_hash;
+    var block_num, crypto_hash, err, header_hash, payload_secretbox, step1_cat, step1_hash;
     header_hash = _arg.header_hash, block_num = _arg.block_num, payload_secretbox = _arg.payload_secretbox;
     try {
       step1_cat = Buffer.concat([header_hash, nonce.nonceForChunkSecretBox(block_num), payload_secretbox]);
@@ -3907,6 +3907,8 @@ arguments[4][12][0].apply(exports,arguments)
       crypto_hash.update(step1_cat);
       step1_hash = crypto_hash.digest();
     } catch (_error) {
+      err = _error;
+      console.log(err.message);
       return cb(new Error("step1"), null);
     }
     return cb(null, step1_hash);
@@ -4023,7 +4025,7 @@ arguments[4][12][0].apply(exports,arguments)
               return step1_hash = arguments[0];
             };
           })(),
-          lineno: 42
+          lineno: 41
         })));
         __iced_deferrals._fulfill();
       });
@@ -4044,7 +4046,7 @@ arguments[4][12][0].apply(exports,arguments)
                 return computed_authenticator = arguments[0];
               };
             })(),
-            lineno: 43
+            lineno: 42
           })));
           __iced_deferrals._fulfill();
         })(function() {
@@ -4103,49 +4105,72 @@ arguments[4][12][0].apply(exports,arguments)
   NaClEncryptStream = (function(_super) {
     __extends(NaClEncryptStream, _super);
 
+    NaClEncryptStream.prototype._write_header = function(cb) {
+      var args, esc, header_hash, header_intermediate, mac_keys, payload_key, ___iced_passed_deferral, __iced_deferrals, __iced_k;
+      __iced_k = __iced_k_noop;
+      ___iced_passed_deferral = iced.findDeferral(arguments);
+      esc = make_esc(cb, "NaClEncryptStream::_write_header");
+      args = {
+        encryptor: this._encryptor,
+        recipients: this._recipients,
+        anonymized_recipients: this._anonymized_recipients
+      };
+      (function(_this) {
+        return (function(__iced_k) {
+          __iced_deferrals = new iced.Deferrals(__iced_k, {
+            parent: ___iced_passed_deferral,
+            filename: "/home/mpcsh/keybase/node-saltpack/src/stream.iced",
+            funcname: "NaClEncryptStream._write_header"
+          });
+          header.generate_encryption_header_packet(args, esc(__iced_deferrals.defer({
+            assign_fn: (function() {
+              return function() {
+                header_intermediate = arguments[0].header_intermediate;
+                header_hash = arguments[0].header_hash;
+                mac_keys = arguments[0].mac_keys;
+                return payload_key = arguments[0].payload_key;
+              };
+            })(),
+            lineno: 24
+          })));
+          __iced_deferrals._fulfill();
+        });
+      })(this)((function(_this) {
+        return function() {
+          _this._header_hash = header_hash;
+          _this._mac_keys = mac_keys;
+          if (_this._encryptor == null) {
+            _this._encryptor = nacl.alloc({
+              force_js: false
+            });
+          }
+          _this._encryptor.secretKey = payload_key;
+          _this.push(header_intermediate);
+          _this._header_written = true;
+          return cb(null);
+        };
+      })(this));
+    };
+
     NaClEncryptStream.prototype._encrypt = function(chunk, cb) {
-      var args, esc, header_hash, header_intermediate, mac_keys, payload_key, payload_list, ___iced_passed_deferral, __iced_deferrals, __iced_k;
+      var args, esc, payload_list, ___iced_passed_deferral, __iced_deferrals, __iced_k;
       __iced_k = __iced_k_noop;
       ___iced_passed_deferral = iced.findDeferral(arguments);
       esc = make_esc(cb, "NaClEncryptStream::_encrypt");
       (function(_this) {
         return (function(__iced_k) {
           if (!_this._header_written) {
-            args = {
-              encryptor: _this._encryptor,
-              recipients: _this._recipients,
-              anonymized_recipients: _this._anonymized_recipients
-            };
             (function(__iced_k) {
               __iced_deferrals = new iced.Deferrals(__iced_k, {
                 parent: ___iced_passed_deferral,
                 filename: "/home/mpcsh/keybase/node-saltpack/src/stream.iced",
                 funcname: "NaClEncryptStream._encrypt"
               });
-              header.generate_encryption_header_packet(args, esc(__iced_deferrals.defer({
-                assign_fn: (function() {
-                  return function() {
-                    header_intermediate = arguments[0].header_intermediate;
-                    header_hash = arguments[0].header_hash;
-                    mac_keys = arguments[0].mac_keys;
-                    return payload_key = arguments[0].payload_key;
-                  };
-                })(),
-                lineno: 27
+              _this._write_header(esc(__iced_deferrals.defer({
+                lineno: 39
               })));
               __iced_deferrals._fulfill();
-            })(function() {
-              _this._header_hash = header_hash;
-              _this._mac_keys = mac_keys;
-              if (_this._encryptor == null) {
-                _this._encryptor = nacl.alloc({
-                  force_js: false
-                });
-              }
-              _this._encryptor.secretKey = payload_key;
-              _this.push(header_intermediate);
-              return __iced_k(_this._header_written = true);
-            });
+            })(__iced_k);
           } else {
             return __iced_k();
           }
@@ -4171,7 +4196,7 @@ arguments[4][12][0].apply(exports,arguments)
                   return payload_list = arguments[0];
                 };
               })(),
-              lineno: 43
+              lineno: 48
             })));
             __iced_deferrals._fulfill();
           })(function() {
@@ -4200,7 +4225,7 @@ arguments[4][12][0].apply(exports,arguments)
                 return payload_list = arguments[0];
               };
             })(),
-            lineno: 50
+            lineno: 55
           })));
           __iced_deferrals._fulfill();
         });
@@ -4216,6 +4241,7 @@ arguments[4][12][0].apply(exports,arguments)
       this._recipients = _recipients;
       this._anonymized_recipients = _anonymized_recipients;
       this._encrypt = __bind(this._encrypt, this);
+      this._write_header = __bind(this._write_header, this);
       this._header_written = false;
       this._block_num = 0;
       this._mac_keys = null;
@@ -4260,7 +4286,7 @@ arguments[4][12][0].apply(exports,arguments)
                 return payload_text = arguments[0];
               };
             })(),
-            lineno: 74
+            lineno: 79
           })));
           __iced_deferrals._fulfill();
         });
@@ -4272,11 +4298,6 @@ arguments[4][12][0].apply(exports,arguments)
       })(this));
     };
 
-    NaClDecryptStream.prototype._transform_chunk = function(chunk, cb) {
-      var esc;
-      return esc = make_esc(cb, "NaClDecryptStream::_transform_chunk");
-    };
-
     NaClDecryptStream.prototype._transform = function(chunk, encoding, cb) {
       var esc, header_hash, mac_key, out, payload_key, recipient_index, ___iced_passed_deferral, __iced_deferrals, __iced_k;
       __iced_k = __iced_k_noop;
@@ -4285,34 +4306,7 @@ arguments[4][12][0].apply(exports,arguments)
       if (chunk.length === 0) {
         return cb(null, null);
       }
-      if (this._header_read) {
-        (function(_this) {
-          return (function(__iced_k) {
-            __iced_deferrals = new iced.Deferrals(__iced_k, {
-              parent: ___iced_passed_deferral,
-              filename: "/home/mpcsh/keybase/node-saltpack/src/stream.iced",
-              funcname: "NaClDecryptStream._transform"
-            });
-            _this._decrypt(chunk, esc(__iced_deferrals.defer({
-              assign_fn: (function() {
-                return function() {
-                  return out = arguments[0];
-                };
-              })(),
-              lineno: 87
-            })));
-            __iced_deferrals._fulfill();
-          });
-        })(this)((function(_this) {
-          return function() {
-            if (out.length === 0) {
-              _this._found_empty_ending_packet = true;
-            }
-            return cb(null, out);
-            return __iced_k();
-          };
-        })(this));
-      } else {
+      if (!this._header_read) {
         (function(_this) {
           return (function(__iced_k) {
             __iced_deferrals = new iced.Deferrals(__iced_k, {
@@ -4332,7 +4326,7 @@ arguments[4][12][0].apply(exports,arguments)
                   return recipient_index = arguments[0].recipient_index;
                 };
               })(),
-              lineno: 92
+              lineno: 91
             })));
             __iced_deferrals._fulfill();
           });
@@ -4344,6 +4338,36 @@ arguments[4][12][0].apply(exports,arguments)
             _this._recipient_index = recipient_index;
             _this._header_read = true;
             return cb(null, null);
+            return __iced_k();
+          };
+        })(this));
+      } else {
+        if (this._found_empty_ending_packet) {
+          return cb(new Error("Message was reordered"), null);
+        }
+        (function(_this) {
+          return (function(__iced_k) {
+            __iced_deferrals = new iced.Deferrals(__iced_k, {
+              parent: ___iced_passed_deferral,
+              filename: "/home/mpcsh/keybase/node-saltpack/src/stream.iced",
+              funcname: "NaClDecryptStream._transform"
+            });
+            _this._decrypt(chunk, esc(__iced_deferrals.defer({
+              assign_fn: (function() {
+                return function() {
+                  return out = arguments[0];
+                };
+              })(),
+              lineno: 102
+            })));
+            __iced_deferrals._fulfill();
+          });
+        })(this)((function(_this) {
+          return function() {
+            if (out.length === 0) {
+              _this._found_empty_ending_packet = true;
+            }
+            return cb(null, out);
             return __iced_k();
           };
         })(this));
@@ -4359,7 +4383,6 @@ arguments[4][12][0].apply(exports,arguments)
 
     function NaClDecryptStream(_decryptor) {
       this._decryptor = _decryptor;
-      this._transform_chunk = __bind(this._transform_chunk, this);
       this._decrypt = __bind(this._decrypt, this);
       this._header_read = false;
       this._header_hash = null;

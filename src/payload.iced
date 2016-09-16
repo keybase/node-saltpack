@@ -11,7 +11,7 @@ compute_authenticator = ({hash, key}, cb) ->
     authenticator = hmac.digest()[0...32]
   catch
     return cb(new Error("compute_authenticator"), null)
-  return cb(null, authenticator)
+  cb(null, authenticator)
 
 # sha512(header_hash + payload secretbox nonce + payload secretbox)
 step1 = ({header_hash, block_num, payload_secretbox}, cb) ->
@@ -20,22 +20,21 @@ step1 = ({header_hash, block_num, payload_secretbox}, cb) ->
     crypto_hash = crypto.createHash('sha512')
     crypto_hash.update(step1_cat)
     step1_hash = crypto_hash.digest()
-  catch
+  catch err
+    console.log(err.message)
     return cb(new Error("step1"), null)
-  return cb(null, step1_hash)
+  cb(null, step1_hash)
 
 exports.generate_encryption_payload_packet = ({payload_encryptor, plaintext, block_num, header_hash, mac_keys}, cb) ->
   esc = make_esc(cb, "generate_encryption_payload_packet")
   # perform nacl encryption of payload
   payload_secretbox = payload_encryptor.secretbox({plaintext, nonce : nonce.nonceForChunkSecretBox(block_num)})
-
   # compute the authenticators
   await step1({header_hash, block_num, payload_secretbox}, esc(defer(step1_hash)))
   authenticators = []
   for i in [0...mac_keys.length]
     await compute_authenticator({hash : step1_hash, key : mac_keys[i]}, esc(defer(authenticators[i])))
-
-  return cb(null, [authenticators, payload_secretbox])
+  cb(null, [authenticators, payload_secretbox])
 
 exports.parse_encryption_payload_packet = ({payload_decryptor, payload_list, block_num, header_hash, mac_key, recipient_index}, cb) ->
   esc = make_esc(cb, "parse_encryption_payload_packet")
@@ -47,5 +46,4 @@ exports.parse_encryption_payload_packet = ({payload_decryptor, payload_list, blo
 
   # if we make it here, we are an authenticator, so decrypt
   payload = payload_decryptor.secretbox_open({ciphertext : payload_list[1], nonce : nonce.nonceForChunkSecretBox(block_num)})
-
-  return cb(null, payload)
+  cb(null, payload)

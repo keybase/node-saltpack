@@ -15,7 +15,7 @@ exports.bufeq_secure = (x,y) ->
     for i in [0...x.length]
       check |= (x.readUInt8(i) ^ y.readUInt8(i))
     (check is 0)
-  return ret
+  ret
 
 # generates two keypairs, named alice and bob
 exports.alice_and_bob = (opts) ->
@@ -24,7 +24,7 @@ exports.alice_and_bob = (opts) ->
   bob = nacl.alloc({force_js})
   alice.genBoxPair()
   bob.genBoxPair()
-  return {alice, bob}
+  {alice, bob}
 
 # generates a random recipients list with the specified public key inserted somewhere and junk everywhere else
 exports.gen_recipients = (pk) ->
@@ -33,7 +33,7 @@ exports.gen_recipients = (pk) ->
   for i in [0...(recipient_index + 2)]
     recipients_list.push(crypto.randomBytes(32))
   recipients_list[recipient_index] = pk
-  return recipients_list
+  recipients_list
 
 # writes random data in random chunk sizes to the given stream
 exports.stream_random_data = (strm, len, cb) ->
@@ -69,4 +69,4 @@ exports.StreamToBuffer = class StreamToBuffer extends stream.Transform
     cb()
 
   getBuffer : () ->
-    return Buffer.concat(@bufs)
+    Buffer.concat(@bufs)

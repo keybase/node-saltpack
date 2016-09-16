@@ -15,24 +15,29 @@ noop = () ->
 # This is a raw NaCl stream - it doesn't implement msgpack, armoring, or anything like that. This should only ever be called inside the exposed EncryptStream class
 class NaClEncryptStream extends stream.ChunkStream
 
+  _write_header : (cb) =>
+    esc = make_esc(cb, "NaClEncryptStream::_write_header")
+    args = {
+      encryptor: @_encryptor,
+      recipients: @_recipients,
+      anonymized_recipients: @_anonymized_recipients
+    }
+    await header.generate_encryption_header_packet(args, esc(defer({header_intermediate, header_hash, mac_keys, payload_key})))
+    @_header_hash = header_hash
+    @_mac_keys = mac_keys
+    unless @_encryptor?
+      @_encryptor = nacl.alloc({force_js : false})
+    @_encryptor.secretKey = payload_key
+    @push(header_intermediate)
+    @_header_written = true
+    cb(null)
+
   # this function encrypts for a specific key, outputting a list object for msgpack. it gets passed in as the transform function to `node-chunk-stream`
   _encrypt : (chunk, cb) =>
     esc = make_esc(cb, "NaClEncryptStream::_encrypt")
     # on the first call, spit out a header packet before writing payload
     if not @_header_written
-      args = {
-        encryptor: @_encryptor,
-        recipients: @_recipients,
-        anonymized_recipients: @_anonymized_recipients
-      }
-      await header.generate_encryption_header_packet(args, esc(defer({header_intermediate, header_hash, mac_keys, payload_key})))
-      @_header_hash = header_hash
-      @_mac_keys = mac_keys
-      unless @_encryptor?
-        @_encryptor = nacl.alloc({force_js : false})
-      @_encryptor.secretKey = payload_key
-      @push(header_intermediate)
-      @_header_written = true
+      await @_write_header(esc(defer()))
     # either way, we want to encrypt the received payload
     args = {
       payload_encryptor: @_encryptor,
@@ -43,13 +48,13 @@ class NaClEncryptStream extends stream.ChunkStream
     }
     await payload.generate_encryption_payload_packet(args, esc(defer(payload_list)))
     ++@_block_num
-    return cb(null, payload_list)
+    cb(null, payload_list)
 
   # write the empty payload packet
   flush_append : (cb) ->
     esc = make_esc(cb, "NaClEncryptStream::_flush_append")
     await @_encrypt(new Buffer(''), esc(defer(payload_list)))
-    return cb(null, payload_list)
+    cb(null, payload_list)
 
   constructor : (@_encryptor, @_recipients, @_anonymized_recipients) ->
     @_header_written = false
@@ -74,22 +79,16 @@ class NaClDecryptStream extends require('stream').Transform
     }
     await payload.parse_encryption_payload_packet(args, esc(defer(payload_text)))
     ++@_block_num
-    return cb(null, payload_text)
+    cb(null, payload_text)
 
-  _transform_chunk : (chunk, cb) =>
-    esc = make_esc(cb, "NaClDecryptStream::_transform_chunk")
-
-  # as above, this function parses the header on the first call and defers to `node-chunk-stream` on subsequent calls
   _transform : (chunk, encoding, cb) ->
     esc = make_esc(cb, "NaClDecryptStream::_transform")
+
     if chunk.length is 0
       return cb(null, null)
-    if @_header_read
-      await @_decrypt(chunk, esc(defer(out)))
-      if out.length is 0
-        @_found_empty_ending_packet = true
-      return cb(null, out)
-    else
+
+    if not @_header_read
+      # parse the header packet
       await header.parse_encryption_header_packet({decryptor : @_decryptor, header_intermediate : chunk}, esc(defer({header_hash, payload_key, mac_key, recipient_index})))
       @_header_hash = header_hash
       @_decryptor.secretKey = payload_key
@@ -98,11 +97,19 @@ class NaClDecryptStream extends require('stream').Transform
       @_header_read = true
       return cb(null, null)
 
+    else
+      if @_found_empty_ending_packet
+        return cb(new Error("Message was reordered"), null)
+      await @_decrypt(chunk, esc(defer(out)))
+      if out.length is 0
+        @_found_empty_ending_packet = true
+      return cb(null, out)
+
   _flush : (cb) ->
     # detect truncation attacks
     if not @_found_empty_ending_packet
       return cb(new Error("Message was truncated"), null)
-    return cb(null, null)
+    cb(null, null)
 
   constructor : (@_decryptor) ->
     @_header_read = false
@@ -162,7 +169,7 @@ class StreamWrapper extends EventEmitter
 
   pipe : (dest) ->
     @last_stream.pipe(dest)
-    return dest
+    dest
 
   end : () ->
     @first_stream.end()

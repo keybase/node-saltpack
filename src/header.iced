@@ -16,9 +16,12 @@ crypto_secretbox_KEYBYTES = 32
 compute_mac_key = ({encryptor, header_hash, pubkey}, cb) ->
   zero_bytes = new Buffer(crypto_auth_KEYBYTES)
   zero_bytes.fill(0)
-  mac_box = encryptor.encrypt({plaintext : zero_bytes, nonce : nonce.nonceForMACKeyBox(header_hash), pubkey})
+  try
+    mac_box = encryptor.encrypt({plaintext : zero_bytes, nonce : nonce.nonceForMACKeyBox(header_hash), pubkey})
+  catch
+    return cb(new Error("Failed to generate MAC keys"), null)
   # take last crypto_auth_BYTES bytes of MAC box
-  return cb(null, mac_box.slice(-crypto_auth_KEYBYTES))
+  cb(null, mac_box.slice(-crypto_auth_KEYBYTES))
 
 exports.generate_encryption_header_packet = ({encryptor, recipients, anonymized_recipients}, cb) ->
   esc = make_esc(cb, "generate_encryption_header_packet")
@@ -45,7 +48,7 @@ exports.generate_encryption_header_packet = ({encryptor, recipients, anonymized_
   # create the recipients list
   recipients_list = []
   unless recipients.length > 0
-    return cb(Error("Bogus empty recipients list"), null)
+    return cb(new Error("Bogus empty recipients list"), null)
   exposed_recipients = if anonymized_recipients?.length is recipients.length then anonymized_recipients else recipients
   for i in [0...recipients.length]
     rec_pair = []
@@ -66,7 +69,7 @@ exports.generate_encryption_header_packet = ({encryptor, recipients, anonymized_
   for i in [0...recipients.length]
     await compute_mac_key({encryptor : sender_encryptor, header_hash, pubkey : recipients[i]}, esc(defer(mac_keys[i])))
 
-  return cb(null, {header_intermediate, header_hash, mac_keys, payload_key})
+  cb(null, {header_intermediate, header_hash, mac_keys, payload_key})
 
 exports.parse_encryption_header_packet = ({decryptor, header_intermediate}, cb) ->
   esc = make_esc(cb, "parse_encryption_header_packet")
@@ -79,11 +82,11 @@ exports.parse_encryption_header_packet = ({decryptor, header_intermediate}, cb) 
 
   #sanity checking
   if format isnt 'saltpack'
-    return cb(Error("wrong format #{format}"), null)
+    return cb(new Error("wrong format #{format}"), null)
   if major isnt current_major
-    return cb(Error("wrong version number #{major}.#{minor}"), null)
+    return cb(new Error("wrong version number #{major}.#{minor}"), null)
   if mode isnt encryption_mode
-    return cb(Error("packet wasn't meant for decryption, found mode #{mode}"), null)
+    return cb(new Error("packet wasn't meant for decryption, found mode #{mode}"), null)
 
   #precompute ephemeral shared secret
   secret = decryptor.box_beforenm({pubkey : ephemeral, seckey : decryptor.secretKey})
@@ -108,7 +111,7 @@ exports.parse_encryption_header_packet = ({decryptor, header_intermediate}, cb) 
       else throw error
 
   unless payload_key?
-    return cb(Error('You are not a recipient!'), null)
+    return cb(new Error('You are not a recipient!'), null)
 
   #open the sender secretbox
   payload_decryptor = nacl.alloc({force_js : false})
@@ -118,4 +121,4 @@ exports.parse_encryption_header_packet = ({decryptor, header_intermediate}, cb) 
   #compute the MAC key
   await compute_mac_key({encryptor : decryptor, header_hash, pubkey : sender_pubkey}, esc(defer(mac_key)))
 
-  return cb(null, {header_list, header_hash, payload_key, sender_pubkey, mac_key, recipient_index})
+  cb(null, {header_list, header_hash, payload_key, sender_pubkey, mac_key, recipient_index})
