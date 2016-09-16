@@ -1,0 +1,14 @@
+dist: trusty
+os:
+  - linux
+language: node_js
+node_js:
+  - "6"
+
+git:
+  depth: 1
+
+before_install:
+  - echo "Running on commit $(git rev-parse HEAD)."
+install: npm i
+script: make test
