@@ -12,7 +12,7 @@ First, you'll need to obtain keys somehow. See our [NaCl](https://github.com/key
 Once you have keys for the encryptor and the public keys of each recipient:
 
 ```js
-var saltpack = require(".");
+var saltpack = require("saltpack");
 
 //get some testing keys, create encrypt/decrypt streams
 var alice, bob;
