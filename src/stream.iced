@@ -12,7 +12,9 @@ format = require('./format')
 SALTPACK_BLOCK_LEN = (1024**2)
 noop = () ->
 
-# This is a raw NaCl stream - it doesn't implement msgpack, armoring, or anything like that. This should only ever be called inside the exposed EncryptStream class
+# This is a raw NaCl stream - it doesn't implement msgpack, armoring, or
+# anything like that. This should only ever be called inside the exposed
+# EncryptStream class
 class NaClEncryptStream extends stream.ChunkStream
 
   _write_header : (cb) =>
@@ -22,7 +24,12 @@ class NaClEncryptStream extends stream.ChunkStream
       recipients: @_recipients,
       anonymized_recipients: @_anonymized_recipients
     }
-    await header.generate_encryption_header_packet(args, esc(defer({header_intermediate, header_hash, mac_keys, payload_key})))
+    await header.generate_encryption_header_packet(args, esc(defer({
+      header_intermediate,
+      header_hash,
+      mac_keys,
+      payload_key
+    })))
     @_header_hash = header_hash
     @_mac_keys = mac_keys
     unless @_encryptor?
@@ -32,7 +39,8 @@ class NaClEncryptStream extends stream.ChunkStream
     @_header_written = true
     cb(null)
 
-  # this function encrypts for a specific key, outputting a list object for msgpack. it gets passed in as the transform function to `node-chunk-stream`
+  # this function encrypts for a specific key, outputting a list object for
+  # msgpack. it gets passed in as the transform function to `node-chunk-stream`
   _encrypt : (chunk, cb) =>
     esc = make_esc(cb, "NaClEncryptStream::_encrypt")
     # on the first call, spit out a header packet before writing payload
@@ -63,7 +71,9 @@ class NaClEncryptStream extends stream.ChunkStream
     @_header_hash = null
     super({transform_func : @_encrypt, block_size : SALTPACK_BLOCK_LEN, readableObjectMode : true})
 
-# This is a raw NaCl stream - it doesn't implement msgpack, armoring, or anything like that. This should only ever be called inside the exposed EncryptStream class
+# This is a raw NaCl stream - it doesn't implement msgpack, armoring, or
+# anything like that. This should only ever be called inside the exposed
+# EncryptStream class
 class NaClDecryptStream extends require('stream').Transform
 
   # as above, this function encrypts for a specific key and is passed to `node-chunk-stream`
@@ -89,7 +99,13 @@ class NaClDecryptStream extends require('stream').Transform
 
     if not @_header_read
       # parse the header packet
-      await header.parse_encryption_header_packet({decryptor : @_decryptor, header_intermediate : chunk}, esc(defer({header_hash, payload_key, mac_key, recipient_index})))
+      args = {decryptor: @_decryptor, header_intermediate: chunk}
+      await header.parse_encryption_header_packet(args, esc(defer({
+        header_hash,
+        payload_key,
+        mac_key,
+        recipient_index
+      })))
       @_header_hash = header_hash
       @_decryptor.secretKey = payload_key
       @_mac_key = mac_key
@@ -122,8 +138,9 @@ class NaClDecryptStream extends require('stream').Transform
 
 #===========================================================
 
-# The two classes below are the meat and potatoes of this repo: they snap several streams together in a modular fashion to give a full saltpack pipeline
-# Each of the two classes contain the following components:
+# The two classes below are the meat and potatoes of this repo: they snap
+# several streams together in a modular fashion to give a full saltpack
+# pipeline. Each of the two classes contain the following components:
 #   - a nacl_stream which does the raw crypto
 #   - an (un)pack_stream which does the msgpack {en,de}coding
 # When run in armoring mode, each class also contains the following components:
@@ -131,9 +148,12 @@ class NaClDecryptStream extends require('stream').Transform
 #   - a format stream which frames the payload and inserts spaces/line breaks where appropriate
 # Both classes try to mimic stream-like interfaces:
 #   - calling `stream.write(chunk, cb)` will write to the first stream in the pipeline
-#   - calling `stream.end(cb)` will attach an end listener to the last stream in the pipeline and end the first stream - the callback will fire when all streams have ended
+#   - calling `stream.end(cb)` will attach an end listener to the last stream
+#     in the pipeline and end the first stream - the callback will fire when all
+#     streams have ended
 #   - calling `stream.pipe(dest)` will pipe the last stream in the pipeline to the given destination
-#   - notably missing: it's not possible to do `other_stream.pipe(stream)`, instead use `other_stream.pipe(stream.first_stream)`
+#   - notably missing: it's not possible to do `other_stream.pipe(stream)`, instead use
+#     `other_stream.pipe(stream.first_stream)`
 
 #===========================================================
 
