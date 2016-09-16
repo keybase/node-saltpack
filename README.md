@@ -68,4 +68,5 @@ The events are propagated up to the caller by the wrapped stream classes. Additi
 - `.write(chunk)`
 - `.pipe(dest)`
 - `.end()`
+
 Unfortunately, at this time it is not possibe to chain .pipe() calls, as explained above. Other than this you can treat `EncryptStream` and `DecryptStream` as standard NodeJS streams.
