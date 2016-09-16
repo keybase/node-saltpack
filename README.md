@@ -12,6 +12,8 @@ First, you'll need to obtain keys somehow. See our [NaCl](https://github.com/key
 Once you have keys for the encryptor and the public keys of each recipient:
 
 ```js
+//this is the fanciest `echo`  e v e r!
+//(this script will read from stdin, encrypt, decrypt, and write to stdout)
 var saltpack = require("saltpack");
 
 //get some testing keys, create encrypt/decrypt streams
