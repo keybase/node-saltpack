@@ -4,7 +4,7 @@ saltpack = require('../..')
 format = saltpack.lowlevel.format
 stream = saltpack.stream
 util = saltpack.lowlevel.util
-vectors = util.vectors
+vectors = require('../vectors.iced')
 
 msg_length = (1024**2)/2
 
