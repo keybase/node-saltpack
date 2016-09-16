@@ -14,10 +14,10 @@
     "iced-runtime": "^1.0.3",
     "iced-test": "0.0.22",
     "istanbul": "^0.4.5",
-    "keybase-chunk-stream": "^0.1.8",
+    "keybase-chunk-stream": "^0.2.1",
     "keybase-msgpack-lite": "^0.1.25",
     "keybase-nacl": "^1.0.9",
-    "node-armor-x": "^0.0.9"
+    "node-armor-x": "^0.1.1"
   },
   "author": "Mark Cohen",
   "devDependencies": {

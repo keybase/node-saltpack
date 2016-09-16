@@ -21,9 +21,9 @@ var alice, bob;
 //to specify anonymous recipients, simply add an "anonymized_recipients" argument
 //to the dict, with "null" in place of a public key for each recipient you want to hide.
 var es = new saltpack.stream.EncryptStream({
-	encryptor: alice,
-	do_armoring: true,
-	recipients: [bob.publicKey]
+    encryptor: alice,
+    do_armoring: true,
+    recipients: [bob.publicKey]
 })
 var ds = new saltpack.stream.DecryptStream({decryptor: bob, do_armoring: true})
 
@@ -49,3 +49,23 @@ file.pipe(ds)
 ds.pipe(process.stdin)
 file.on('close', () -> ds.end())
 ```
+
+### Stream interface
+`EncryptStream` and `DecryptStream` mimic the NodeJS [stream API](https://nodejs.org/api/stream.html) as closely as possible. Accordingly, you can watch for the following events:
+- Writable side (input):
+    - `drain`
+    - `pipe`
+    - `unpipe`
+- Readable side (output):
+    - `close`
+    - `data`
+    - `end`
+    - `finish`
+    - `readable`
+The events are propagated up to the caller by the wrapped stream classes. Additionally, 'error' events emitted by _any_ stream in the pipeline will propagate up to the caller.
+
+`EncryptStream` and `DecryptStream` also provide three stream-interface methods:
+- `.write(chunk)`
+- `.pipe(dest)`
+- `.end()`
+Unfortunately, at this time it is not possibe to chain .pipe() calls, as explained above. Other than this you can treat `EncryptStream` and `DecryptStream` as standard NodeJS streams.

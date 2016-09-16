@@ -10,7 +10,7 @@ BROWSERIFY=node_modules/.bin/browserify
 lib/%.js: src/%.iced
 	$(ICED) -I browserify -c -o `dirname $@` $<
 
-$(BUILD_STAMP): lib/main.js lib/util.js lib/format.js lib/nonce.js lib/header.js lib/payload.js lib/stream.js lib/vectors.js
+$(BUILD_STAMP): lib/main.js lib/util.js lib/format.js lib/nonce.js lib/header.js lib/payload.js lib/stream.js
 	date > $@
 
 clean:
