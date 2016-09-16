@@ -13,7 +13,6 @@
     "iced-error": "0.0.9",
     "iced-runtime": "^1.0.3",
     "iced-test": "0.0.22",
-    "istanbul": "^0.4.5",
     "keybase-chunk-stream": "^0.2.1",
     "keybase-msgpack-lite": "^0.1.25",
     "keybase-nacl": "^1.0.9",
@@ -25,6 +24,6 @@
     "iced-coffee-script": "^108.0.9",
     "iced-test": "0.0.22",
     "icsify": "^0.7.0",
-    "istanbul": "^0.4.0"
+    "istanbul": "^0.4.5"
   }
 }
