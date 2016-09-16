@@ -1,5 +1,5 @@
 {
-  "name": "node-saltpack",
+  "name": "saltpack",
   "version": "0.0.1",
   "description": "An IcedCoffeeScript implementation of saltpack",
   "homepage": "https://github.com/keybase/node-saltpack",
@@ -10,11 +10,14 @@
   },
   "license": "BSD-3-Clause",
   "dependencies": {
+    "iced-error": "0.0.9",
     "iced-runtime": "^1.0.3",
-    "keybase-nacl": "^1.0.8",
-    "keybase-chunk-stream": "^0.1.2",
-    "node-armor-x": "^0.0.3",
-    "purepack": "^1.0.4"
+    "iced-test": "0.0.22",
+    "istanbul": "^0.4.5",
+    "keybase-chunk-stream": "^0.1.8",
+    "keybase-msgpack-lite": "^0.1.25",
+    "keybase-nacl": "^1.0.9",
+    "node-armor-x": "^0.0.9"
   },
   "author": "Mark Cohen",
   "devDependencies": {
@@ -22,7 +25,6 @@
     "iced-coffee-script": "^108.0.9",
     "iced-test": "0.0.22",
     "icsify": "^0.7.0",
-    "istanbul": "^0.4.0",
-    "msgpack-lite": "^0.1.20"
+    "istanbul": "^0.4.0"
   }
 }
