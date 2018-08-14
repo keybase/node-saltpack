@@ -147,8 +147,8 @@ class NaClDecryptStream extends require('stream').Transform
 #   - an armor stream which base62's the output
 #   - a format stream which frames the payload and inserts spaces/line breaks where appropriate
 # Both classes try to mimic stream-like interfaces:
-#   - calling `stream.write(chunk, cb)` will write to the first stream in the pipeline
-#   - calling `stream.end(cb)` will attach an end listener to the last stream
+#   - calling `stream.write(chunk[, encoding][, cb])` will write to the first stream in the pipeline
+#   - calling `stream.end([chunk][, encoding][, cb])` will attach an end listener to the last stream
 #     in the pipeline and end the first stream - the callback will fire when all
 #     streams have ended
 #   - calling `stream.pipe(dest)` will pipe the last stream in the pipeline to the given destination
@@ -184,15 +184,15 @@ class StreamWrapper extends EventEmitter
     @last_stream.on('finish', () => @emit('finish'))
     @last_stream.on('readable', () => @emit('readable'))
 
-  write : (chunk) ->
-    @first_stream.write(chunk)
+  write : (chunk, encoding, cb) ->
+    @first_stream.write(chunk, encoding, cb)
 
   pipe : (dest) ->
     @last_stream.pipe(dest)
     dest
 
-  end : () ->
-    @first_stream.end()
+  end : (chunk, encoding, cb) ->
+    @first_stream.end(chunk, encoding, cb)
 
 exports.EncryptStream = class EncryptStream extends StreamWrapper
   constructor : ({encryptor, do_armoring, recipients, anonymized_recipients}) ->
