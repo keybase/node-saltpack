@@ -6,7 +6,7 @@ patrick_jack_and_mark_keys = [new Buffer('28536f6cd88b94772fc82b248163c5c7da76f7
 es = new saltpack.stream.EncryptStream({encryptor : alice, do_armoring : true, recipients : patrick_jack_and_mark_keys})
 stb = new saltpack.lowlevel.util.StreamToBuffer()
 es.pipe(stb)
-await es.write(prompt, undefined, defer(err))
+await es.write(prompt, null, defer(err))
 if err then throw err
 await
   stb.on('finish', defer())

@@ -33180,7 +33180,7 @@ es.pipe(stb);
 (function(_this) {
   return (function(__iced_k) {
     __iced_deferrals = new iced.Deferrals(__iced_k, {});
-    es.write(prompt, void 0, __iced_deferrals.defer({
+    es.write(prompt, null, __iced_deferrals.defer({
       assign_fn: (function() {
         return function() {
           return err = arguments[0];
